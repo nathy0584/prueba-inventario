@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html>
-  <head>
-  <base target="_top">
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Inventarios - Bioclinic (OneDrive / GitHub)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- Librerías 100% gratuitas: SheetJS para leer/escribir Excel (.xlsx) y jsPDF para comprobantes PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
   <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
     google.charts.load('current', {'packages':['corechart']});
@@ -16,13 +22,14 @@
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       min-height: 100vh; margin: 0; padding: 30px 15px;
     }
-    .login-container { max-width: 450px; margin: 60px auto; background: #ffffff; padding: 35px; border-radius: 14px; box-shadow: 0 15px 35px rgba(36, 75, 131, 0.15); border: 1px solid #e2e8f0; }
-    .card-custom { max-width: 1100px; margin: 0 auto; background: #ffffff; border-radius: 14px; box-shadow: 0 15px 35px rgba(36, 75, 131, 0.12); border: 1px solid #e2e8f0; overflow: hidden; }
+    .login-container { max-width: 480px; margin: 50px auto; background: #ffffff; padding: 35px; border-radius: 14px; box-shadow: 0 15px 35px rgba(36, 75, 131, 0.15); border: 1px solid #e2e8f0; }
+    .card-custom { max-width: 1150px; margin: 0 auto; background: #ffffff; border-radius: 14px; box-shadow: 0 15px 35px rgba(36, 75, 131, 0.12); border: 1px solid #e2e8f0; overflow: hidden; }
     
     .header-banner { 
       background-color: #244b83;
       color: #ffffff; padding: 20px 30px;
       display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #e29626;
+      flex-wrap: wrap; gap: 15px;
     }
     .logo-container-fix {
       background: #ffffff; padding: 8px 16px; border-radius: 6px; display: inline-flex;
@@ -30,8 +37,8 @@
     }
     .logo-container-fix svg { height: 42px; width: auto; }
 
-    .nav-tabs-custom { padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    .nav-tabs-custom .nav-link { border: none; color: #475569; font-weight: 600; padding: 16px 20px; border-bottom: 3px solid transparent; background: none; }
+    .nav-tabs-custom { padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+    .nav-tabs-custom .nav-link { border: none; color: #475569; font-weight: 600; padding: 14px 18px; border-bottom: 3px solid transparent; background: none; }
     .nav-tabs-custom .nav-link.active { color: #244b83; border-bottom-color: #244b83; font-weight: 700; }
     
     .tab-panel-content { display: none; }
@@ -48,6 +55,7 @@
     .bioclinic-toast.toast-success { border-left-color: #198754; }
     .bioclinic-toast.toast-error { border-left-color: #dc3545; }
     .bioclinic-toast.toast-info { border-left-color: #0dcaf0; }
+    .bioclinic-toast.toast-warning { border-left-color: #ffc107; }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     
     .table-carro { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -58,6 +66,7 @@
 
 <div id="toastContainer" class="toast-container-custom"></div>
 
+<!-- PANTALLA 1: CONEXIÓN CON ARCHIVO EXCEL EN ONEDRIVE Y LOGIN -->
 <div id="seccionLogin" class="login-container">
   <div class="text-center mb-4">
     <div class="logo-container-fix mb-3">
@@ -73,32 +82,59 @@
         </g>
       </svg>
     </div>
-    <h5 class="fw-bold text-dark mt-2">Autenticación de Personal</h5>
+    <h5 class="fw-bold text-dark mt-2">Control de Inventarios - OneDrive</h5>
+    <p class="text-muted small mb-0">Conecte su archivo Excel de la carpeta OneDrive sincronizada</p>
   </div>
+
+  <!-- PASO 1: SELECCIONAR ARCHIVO EXCEL DE ONEDRIVE -->
+  <div class="p-3 mb-4 rounded border bg-light">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-bold small text-primary"><i class="bi bi-cloud-check-fill me-1"></i> Paso 1: Archivo Base (.xlsx)</span>
+      <span id="badgeEstadoArchivo" class="badge bg-secondary">Sin conectar</span>
+    </div>
+    <button type="button" id="btnConectarExcel" onclick="conectarArchivoOneDrive()" class="btn btn-outline-primary w-100 fw-bold btn-sm">
+      <i class="bi bi-folder2-open me-1"></i> Seleccionar Excel en OneDrive
+    </button>
+    <input type="file" id="inputFallbackExcel" accept=".xlsx" class="d-none" onchange="cargarExcelFallback(event)">
+    <div id="lblNombreArchivo" class="small text-success fw-semibold mt-2 d-none text-truncate"></div>
+  </div>
+
+  <!-- PASO 2: CREDENCIALES DE PERSONAL -->
   <form onsubmit="event.preventDefault(); ejecutarLogin();">
     <div class="mb-3">
       <label class="form-label label-bold">Usuario asignado</label>
-      <input type="text" id="loginUsuario" class="form-control" required>
+      <input type="text" id="loginUsuario" class="form-control" required disabled>
     </div>
     <div class="mb-4">
       <label class="form-label label-bold">Contraseña de acceso</label>
-      <input type="password" id="loginClave" class="form-control" required>
+      <input type="password" id="loginClave" class="form-control" required disabled>
     </div>
-    <button type="submit" class="btn btn-primary w-100 fw-bold" style="background-color: #244b83;">Ingresar al Sistema</button>
+    <button type="submit" id="btnIngresarSistema" class="btn btn-primary w-100 fw-bold" style="background-color: #244b83;" disabled>
+      Ingresar al Sistema
+    </button>
     <div id="errorLogin" class="alert alert-danger mt-3 d-none small text-center"></div>
   </form>
 </div>
 
+<!-- PANTALLA 2: APLICACIÓN PRINCIPAL -->
 <div id="seccionApp" class="card card-custom d-none">
   <div class="header-banner">
     <div>
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-box-seam-fill text-warning fs-3"></i>
-        <h3 class="m-0 fw-bold" style="color:white;">Control de Inventarios, salidas y Mermas</h3>
+        <h3 class="m-0 fw-bold" style="color:white;">Control de Inventarios, Salidas y Mermas</h3>
       </div>
-      <div class="mt-2 small">
-        <i class="bi bi-person-fill text-warning"></i> Operador: <span id="txtNombreUsuario" class="fw-bold"></span>
-        <span class="mx-2">|</span>
+      <div class="mt-2 small d-flex flex-wrap align-items-center gap-2">
+        <span><i class="bi bi-person-fill text-warning"></i> Operador: <strong id="txtNombreUsuario"></strong></span>
+        <span>|</span>
+        <span id="estadoGuardadoBanner" class="badge bg-success"><i class="bi bi-check-circle me-1"></i> OneDrive Sincronizado</span>
+        <button type="button" onclick="recargarDesdeOneDrive()" class="btn btn-sm btn-outline-light py-0 px-2" title="Releer archivo Excel desde OneDrive">
+          <i class="bi bi-arrow-clockwise"></i> Recargar Excel
+        </button>
+        <button type="button" onclick="descargarCopiaExcel()" class="btn btn-sm btn-outline-warning py-0 px-2" title="Descargar respaldo local .xlsx">
+          <i class="bi bi-download"></i> Respaldo
+        </button>
+        <span>|</span>
         <a href="#" onclick="cerrarSesion()" class="text-white-50 text-decoration-none"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a>
       </div>
     </div>
@@ -153,9 +189,6 @@
           <label class="form-label label-bold">Proveedor Asociado</label>
           <select class="form-select" id="proveedor">
             <option value="">Seleccione Proveedor...</option>
-            <? for (var i = 0; i < proveedores.length; i++) { ?>
-              <option value="<?= proveedores[i] ?>"><?= proveedores[i] ?></option>
-            <? } ?>
           </select>
         </div>
         <div class="col-md-6" id="bloqueSucursal">
@@ -184,17 +217,7 @@
         <div class="col-md-4">
           <label class="form-label label-bold">Busque o seleccione el Insumo</label>
           <input type="text" class="form-control" id="txtInputInsumo" list="listaInsumosDinamica" placeholder="Escriba para buscar (Ej: TUBO)..." oninput="mostrarMetadataInsumo()">
-          <datalist id="listaInsumosDinamica">
-            <? for (var i = 0; i < insumos.length; i++) { ?>
-              <option value="<?= insumos[i].id ?> - <?= insumos[i].nombre ?>" 
-                      data-id="<?= insumos[i].id ?>" 
-                      data-nombre="<?= insumos[i].nombre ?>" 
-                      data-stock="<?= insumos[i].stock ?>" 
-                      data-um="<?= insumos[i].um ?>" 
-                      data-estado="<?= insumos[i].estado ?>"
-                      data-categoria="<?= insumos[i].categoria ?>">
-            <? } ?>
-          </datalist>
+          <datalist id="listaInsumosDinamica"></datalist>
           <div id="boxMetadata" class="info-catalogo d-none"></div>
         </div>
         <div class="col-md-2">
@@ -231,7 +254,7 @@
     </div>
 
     <button type="button" onclick="procesarLoteManualCompleto()" class="btn btn-primary w-100 p-3 fw-bold fs-5" id="btnGuardarLoteManual" style="background-color: #244b83;" disabled>
-      <i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial
+      <i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en OneDrive
     </button>
   </div>
 
@@ -385,12 +408,13 @@
     </div>
   </div>
 
-  <!-- PANEL 3: INGRESO MASIVO -->
+  <!-- PANEL 3: INGRESO MASIVO CSV -->
   <div id="panel-masivo" class="tab-panel-content p-4">
     <h5 class="label-bold"><i class="bi bi-filetype-csv text-success me-2"></i>Importación Masiva de Movimientos (.CSV)</h5>
     <div class="card p-4 bg-light border-dashed">
+      <p class="text-muted small">El archivo CSV debe contener columnas: <code>Tipo, Destino_o_Proveedor, Codigo, Descripcion, Cantidad, Vencimiento, Bodega</code></p>
       <input type="file" id="archivoCSV" class="form-control mb-3" accept=".csv">
-      <button onclick="mostrarNotificacion('Módulo CSV operativo en bodega', 'info')" class="btn btn-dark fw-bold">Procesar e Importar Filas</button>
+      <button onclick="procesarArchivoCSV()" class="btn btn-dark fw-bold">Procesar e Importar Filas al Excel</button>
     </div>
   </div>
 
@@ -643,1244 +667,7 @@
   </div>
 </div>
 
-<script>
-  var USUARIO_LOGUEADO = "";
-  var ROL_LOGUEADO = "";
-  var SESION_ES_UTM = false;
-  var MAPA_SUCURSAL_PLANILLA = {};
-  var LOTE_MANUAL_ITEMS = []; 
-  var PEDIDOS_CARGADOS_CACHE = [];
-  var INSUMOS_MONITOR_CACHE = [];
-
-  function mostrarNotificacion(mensaje, tipo = "success") {
-    var container = document.getElementById("toastContainer");
-    var toast = document.createElement("div");
-    toast.className = `bioclinic-toast toast-${tipo}`;
-    
-    var icono = "bi-check-circle-fill text-success";
-    if(tipo === "error") icono = "bi-exclamation-triangle-fill text-danger";
-    if(tipo === "info") icono = "bi-info-circle-fill text-info";
-    toast.innerHTML = `<i class="bi ${icono} fs-4"></i> <div class="fw-semibold text-dark">${mensaje}</div>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = "0";
-      setTimeout(() => toast.remove(), 300);
-    }, 4500);
-  }
-
-  function formatMonto(val) {
-    var num = parseFloat(val);
-    if (isNaN(num)) return "$0";
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(num);
-  }
-
-  function obtenerOptionInsumoSeleccionado() {
-    var val = document.getElementById("txtInputInsumo").value.trim();
-    if (!val) return null;
-    var datalist = document.getElementById("listaInsumosDinamica");
-    for (var i = 0; i < datalist.options.length; i++) {
-      var opt = datalist.options[i];
-      if (opt.value === val || opt.dataset.id === val) {
-        return opt;
-      }
-    }
-    return null;
-  }
-
-  function mostrarMetadataInsumo() {
-    var box = document.getElementById("boxMetadata");
-    var opt = obtenerOptionInsumoSeleccionado();
-    if (!opt) {
-      box.classList.add("d-none");
-      return;
-    }
-    box.classList.remove("d-none");
-    box.innerHTML = `<strong>Nombre:</strong> ${opt.dataset.nombre} | <strong>Stock:</strong> ${opt.dataset.stock} | <strong>U.M.:</strong> ${opt.dataset.um} | <strong>Estado:</strong> ${opt.dataset.estado}`;
-    validarStockDisponible();
-  }
-
-  function agregarInsumoAlLoteManual() {
-    var opt = obtenerOptionInsumoSeleccionado();
-    var cantInput = document.getElementById("cantidad");
-    var vencInput = document.getElementById("vencimientoIndividual");
-    var cantidad = parseFloat(cantInput.value) || 0;
-    var vencimientoVal = vencInput.value ? vencInput.value : "S/V";
-    
-    if (!opt || cantidad <= 0) {
-      mostrarNotificacion("Seleccione o escriba un insumo válido de la lista y especifique una cantidad mayor a 0.", "error");
-      return;
-    }
-    
-    var alerta = document.getElementById("alertaStockInsuficiente");
-    if (!alerta.classList.contains("d-none")) {
-      mostrarNotificacion("No puedes añadir cantidades que superen el stock disponible.", "error");
-      return;
-    }
-    
-    LOTE_MANUAL_ITEMS.push({ 
-      idInsumo: opt.dataset.id, 
-      name: opt.dataset.nombre, 
-      categoria: opt.dataset.categoria || "",
-      um: opt.dataset.um || "UN",
-      cantidad: cantidad, 
-      fechaVenc: vencimientoVal 
-    });
-    
-    document.getElementById("txtInputInsumo").value = "";
-    cantInput.value = "1";
-    vencInput.value = "";
-    document.getElementById("boxMetadata").classList.add("d-none");
-    
-    renderizarTablaLoteManual();
-  }
-
-  function renderizarTablaLoteManual() {
-    var tbody = document.getElementById("tbodyLoteManual");
-    var btnGuardar = document.getElementById("btnGuardarLoteManual");
-
-    if (LOTE_MANUAL_ITEMS.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No has agregado ningún elemento a este lote.</td></tr>';
-      btnGuardar.disabled = true;
-      return;
-    }
-
-    var html = "";
-    LOTE_MANUAL_ITEMS.forEach((item, index) => {
-      html += `<tr>
-        <td><span class="badge bg-dark">${item.idInsumo}</span></td>
-        <td><strong>${item.name}</strong></td>
-        <td class="text-center text-primary fw-bold">${item.cantidad}</td>
-        <td class="text-center"><span class="badge bg-warning text-dark">${item.fechaVenc}</span></td>
-        <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="eliminarItemLoteManual(${index})">❌</button></td>
-      </tr>`;
-    });
-    tbody.innerHTML = html;
-    btnGuardar.disabled = false;
-  }
-  
-  function renderizarTablaReporteMensualHTML(datos) {
-    var tbody = document.getElementById("tbodyReporteMensual");
-    var btnPdf = document.getElementById("btnDescargarPdfReporte");
-    if (!tbody) return;
-
-    if (!datos || datos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron movimientos registrados para esta sucursal en el mes seleccionado.</td></tr>';
-      if (btnPdf) btnPdf.disabled = true;
-      return;
-    }
-
-    var html = "";
-    datos.forEach(function(item) {
-      var solTxt = item.solicitudesTexto ? item.solicitudesTexto : "S/N";
-      var salTxt = item.salidasTexto ? item.salidasTexto : "S/N";
-
-      html += `<tr>
-        <td><strong>${item.insumo || ''}</strong> <small class="text-muted">(${item.codigo || ''})</small></td>
-        <td class="text-center"><span class="badge bg-light text-dark border">${item.um || 'UN'}</span></td>
-        <td class="text-center fw-bold text-primary fs-6">${item.cantPedido || 0}</td>
-        <td class="text-center"><span class="badge bg-secondary">${solTxt}</span></td>
-        <td class="text-center fw-bold text-success fs-6">${item.cantDespachada || 0}</td>
-        <td class="text-center"><span class="badge bg-dark">${salTxt}</span></td>
-      </tr>`;
-    });
-
-    tbody.innerHTML = html;
-    if (btnPdf) btnPdf.disabled = false;
-  }
-
-  function poblarSelectorSucursalesReporte(sucursales) {
-    var selectRep = document.getElementById("reporteSucursalSelect");
-    if (!selectRep || !sucursales) return;
-    selectRep.innerHTML = "";
-    sucursales.forEach(function(s) {
-      selectRep.innerHTML += `<option value="${s}">${s}</option>`;
-    });
-  }
-
-  function consultarReporteMensualBackend() {
-    var sucursal = document.getElementById("reporteSucursalSelect").value;
-    var mes = parseInt(document.getElementById("reporteMesSelect").value);
-    var anio = parseInt(document.getElementById("reporteAnioInput").value);
-
-    if (!sucursal) {
-      mostrarNotificacion("Seleccione una sucursal válida.", "error");
-      return;
-    }
-
-    var tbody = document.getElementById("tbodyReporteMensual");
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Consultando registros...</td></tr>';
-
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (res && res.exito) {
-          document.getElementById("lblSucursalReporte").innerText = res.sucursal;
-          document.getElementById("lblMesAnioReporte").innerText = res.mes + " / " + res.anio;
-          renderizarTablaReporteMensualHTML(res.datos);
-        } else {
-          mostrarNotificacion(res ? res.mensaje : "Error al cargar reporte.", "error");
-          tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al consultar datos.</td></tr>';
-        }
-      })
-      .withFailureHandler(function(err) {
-        mostrarNotificacion("Error de conexión con el servidor.", "error");
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error en la solicitud.</td></tr>';
-      })
-      .obtenerReporteMensualSucursal(sucursal, mes, anio);
-  }
-
-  function descargarPdfReporteMensual() {
-    var sucursal = document.getElementById("reporteSucursalSelect").value;
-    var mes = parseInt(document.getElementById("reporteMesSelect").value);
-    var anio = parseInt(document.getElementById("reporteAnioInput").value);
-
-    if (!sucursal) {
-      mostrarNotificacion("Seleccione una sucursal válida.", "error");
-      return;
-    }
-
-    var btn = document.getElementById("btnDescargarPdfReporte");
-    btn.disabled = true;
-    btn.innerHTML = "⌛ Generando PDF...";
-
-    google.script.run
-      .withSuccessHandler(function(res) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-1"></i> Imprimir / Descargar PDF';
-
-        if (res && res.exito && res.url) {
-          mostrarNotificacion("PDF generado exitosamente.", "success");
-          if (res.url.startsWith("data:application/pdf")) {
-            var pdfWindow = window.open("");
-            pdfWindow.document.write(`<iframe width='100%' height='100%' style='border:none;' src='${res.url}'></iframe>`);
-          } else {
-            window.open(res.url, '_blank');
-          }
-        } else {
-          mostrarNotificacion(res ? res.mensaje : "No se pudo generar el documento.", "error");
-        }
-      })
-      .withFailureHandler(function(err) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-1"></i> Imprimir / Descargar PDF';
-        mostrarNotificacion("Error al comunicarse con el servidor.", "error");
-      })
-      .fabricarPdfReporteMensualBackend(sucursal, mes, anio);
-  }
-
-  function eliminarItemLoteManual(index) {
-    LOTE_MANUAL_ITEMS.splice(index, 1);
-    renderizarTablaLoteManual();
-  }
-
-  function procesarLoteManualCompleto() {
-    if (LOTE_MANUAL_ITEMS.length === 0) return;
-    
-    var btn = document.getElementById("btnGuardarLoteManual");
-    btn.disabled = true;
-    btn.innerHTML = "⌛ Guardando lote...";
-
-    var bodegaSel = document.getElementById("bodegaOrigen") ? document.getElementById("bodegaOrigen").value : "BULNES";
-
-    var contenedorLote = {
-      tipo: document.getElementById("tipoMovimiento").value,
-      proveedor: document.getElementById("proveedor").value,
-      sucursal: document.getElementById("sucursal").value,
-      bodegaOrigen: bodegaSel,
-      factura: document.getElementById("factura").value,
-      notas: document.getElementById("notas").value,
-      operador: USUARIO_LOGUEADO,
-      items: LOTE_MANUAL_ITEMS.map(function(item) {
-        return {
-          idInsumo: item.idInsumo,
-          name: item.name,
-          cantidad: item.cantidad,
-          fechaVenc: item.fechaVenc,
-          categoria: item.categoria || "",
-          codigo: item.idInsumo,
-          descripcion: item.name,
-          um: item.um || "UN",
-          fechaVencimiento: item.fechaVenc || "S/V",
-          bodegaOrigen: bodegaSel
-        };
-      })
-    };
-
-    google.script.run.withSuccessHandler(function(res) {
-      btn.disabled = false;
-      btn.innerHTML = "<i class='bi bi-cloud-arrow-up-fill me-1'></i> Guardar Lote de Movimientos en Historial";
-      
-      if (res.exito) {
-        mostrarNotificacion(`¡Éxito! Lote registrado bajo el Comprobante N° ${res.correlativo}`);
-        LOTE_MANUAL_ITEMS = [];
-        renderizarTablaLoteManual();
-        document.getElementById("notas").value = "";
-        document.getElementById("factura").value = "";
-        alternarCamposDinamicos();
-        actualizarCatalogoDinamicoEnVivo();
-      } else {
-        mostrarNotificacion(res.mensaje, "error");
-      }
-    }).registrarLoteMovimientosManual(contenedorLote);
-  }
-
-  function alternarCamposDinamicos() {
-    var tipo = document.getElementById("tipoMovimiento").value;
-    var prov = document.getElementById("bloqueProveedor");
-    var sClass = document.getElementById("bloqueSucursal").classList;
-    var fact = document.getElementById("bloqueFactura");
-    var bodegaClass = document.getElementById("bloqueBodegaOrigen").classList;
-    
-    prov.classList.add("d-none");
-    sClass.add("d-none");
-    fact.classList.add("d-none");
-    bodegaClass.add("d-none");
-    
-    if (tipo === "INGRESO") {
-      prov.classList.remove("d-none");
-      fact.classList.remove("d-none");
-      bodegaClass.remove("d-none");
-    } else if (tipo === "SALIDA") {
-      sClass.remove("d-none");
-      bodegaClass.remove("d-none");
-    } else if (tipo === "MERMA") {
-      sClass.remove("d-none");
-      bodegaClass.remove("d-none");
-    } else if (tipo === "AJUSTE") {
-      bodegaClass.remove("d-none");
-    }
-    validarStockDisponible();
-  }
-
-  function validarStockDisponible() {
-    var tipo = document.getElementById("tipoMovimiento").value;
-    var opt = obtenerOptionInsumoSeleccionado();
-    var inputCant = document.getElementById("cantidad");
-    var valorCant = parseFloat(inputCant.value) || 0;
-    var alerta = document.getElementById("alertaStockInsuficiente");
-
-    if ((tipo === "SALIDA" || tipo === "MERMA") && opt) {
-      var stockActual = parseFloat(opt.dataset.stock) || 0;
-      if (valorCant > stockActual) {
-        alerta.classList.remove("d-none");
-        return;
-      }
-    }
-    alerta.classList.add("d-none");
-  }
-
-  function cambiarPestaña(id, btn) {
-    document.querySelectorAll('.tab-panel-content').forEach(p => {
-      p.classList.remove('active');
-      p.style.setProperty("display", "none", "important");
-    });
-    
-    document.querySelectorAll('.nav-tabs-custom .nav-link').forEach(b => b.classList.remove('active'));
-    
-    var panelActivo = document.getElementById(id);
-    if (panelActivo) {
-      panelActivo.classList.add('active');
-      panelActivo.style.setProperty("display", "block", "important");
-    }
-    
-    if (btn) btn.classList.add('active');
-    
-    if(id === 'panel-manual') alternarCamposDinamicos();
-    if(id === 'panel-aprobaciones') {
-      if (typeof USUARIO_LOGUEADO !== 'undefined' && 
-         (USUARIO_LOGUEADO.toUpperCase().includes("ADMIN") || USUARIO_LOGUEADO.toUpperCase() === "BODEGA")) {
-        cargarPedidosPendientesAdmin();
-      } else {
-        cargarPedidosPreAprobacionDT();
-      }
-    }
-    if(id === 'panel-monitor') recargarTablaMonitor();
-    if(id === 'panel-mermas') recargarTablaMermas();
-    if(id === 'panel-subbodegas') recargarTablaSubbodegas();
-  }
-
-  function recargarTablaMonitor() {
-    var tbody = document.getElementById("tbodyMonitor");
-    if(!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">⌛ Sincronizando existencias globales...</td></tr>';
-    
-    google.script.run.withSuccessHandler(function(lista) {
-      INSUMOS_MONITOR_CACHE = lista || [];
-      table_refresh_view(INSUMOS_MONITOR_CACHE);
-    }).refrescarStocksInsumos();
-  }
-
-  function filtrarMonitorSaldos() {
-    var texto = document.getElementById("txtBuscarMonitor").value.toLowerCase().trim();
-    if (texto === "") {
-      table_refresh_view(INSUMOS_MONITOR_CACHE);
-      return;
-    }
-    var filtrados = INSUMOS_MONITOR_CACHE.filter(function(ins) {
-      return (ins.id && ins.id.toLowerCase().includes(texto)) || 
-             (ins.nombre && ins.nombre.toLowerCase().includes(texto)) ||
-             (ins.categoria && ins.categoria.toLowerCase().includes(texto));
-    });
-    table_refresh_view(filtrados);
-  }
-
-  function table_refresh_view(lista) {
-    var tbody = document.getElementById("tbodyMonitor");
-    var html = "";
-    if(!lista || !Array.isArray(lista) || lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">No se encontraron registros de insumos.</td></tr>';
-      return;
-    }
-    
-    lista.forEach(function(item) {
-      var claseStock = "bg-success";
-      if(item.stock <= 0) {
-        claseStock = "bg-danger";
-      } else if (item.estado && item.estado.indexOf("CRÍTICO") !== -1) {
-        claseStock = "bg-warning text-dark";
-      }
-      
-      var alertaTrimestral = "";
-      var estiloFila = "";
-      
-      if (item.stock < item.proyeccionTrimestral) {
-        estiloFila = "style='background-color: #fff5f5;'";
-        alertaTrimestral = "<span class='badge bg-danger text-white'><i class='bi bi-exclamation-triangle-fill me-1'></i> Insuficiente</span>";
-      } else {
-        alertaTrimestral = "<span class='badge bg-success text-white'><i class='bi bi-check-circle-fill me-1'></i> Cubierto</span>";
-      }
-      
-      html += "<tr " + estiloFila + ">" +
-        "<td><span class='badge bg-secondary'>" + item.id + "</span></td>" +
-        "<td><strong>" + item.nombre + "</strong></td>" +
-        "<td>" + item.categoria + "</td>" +
-        "<td>" + item.um + "</td>" +
-        "<td class='text-center'><span class='badge badge-stock-size " + claseStock + "'>" + item.stock + "</span></td>" +
-        "<td class='text-end fw-bold text-success'>" + formatMonto(item.totalValor) + "</td>" +
-        "<td class='text-center'><small class='fw-semibold'>" + item.estado + "</small></td>" +
-        "<td class='text-center fw-semibold text-secondary'>" + (item.proyeccionTrimestral || 0) + "</td>" +
-        "<td class='text-center text-muted'>" + (item.proyeccionAnual || 0) + "</td>" + 
-        "<td class='text-center'>" + alertaTrimestral + "</td>" +
-        "</tr>";
-    });
-    tbody.innerHTML = html;
-  }
-
-  function recargarTablaMermas() {
-    var tbody = document.getElementById("tbodyMermas");
-    if(!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">⌛ Calculando mermas...</td></tr>';
-    
-    google.script.run.withSuccessHandler(function(res) {
-      if(!res || res.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No se han registrado mermas.</td></tr>';
-        return;
-      }
-      var html = "";
-      res.forEach(function(m) {
-        html += `<tr>
-          <td><span class="badge bg-danger">${m.id}</span></td>
-          <td><strong>${m.nombre}</strong></td>
-          <td class="text-center text-muted">${m.um || 'UN'}</td>
-          <td class="text-center fw-bold">${m.cantidad}</td>
-          <td class="text-end fw-bold text-danger">${formatMonto(m.valorTotal)}</td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
-    }).refrescarMermas();
-  }
-
-  function abrirModalGraficoMermas() {
-    var modalEl = document.getElementById('modalGraficoMermas');
-    if (!modalEl) return;
-    var myModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-    myModal.show();
-
-    var contenedor = document.getElementById('mermasChartContainer');
-    if (contenedor) {
-      contenedor.innerHTML = `
-        <div class="text-center py-5">
-          <div class="spinner-border text-danger" role="status"></div>
-          <p class="text-muted mt-2">Buscando mermas valorizadas en el Historial...</p>
-        </div>`;
-    }
-
-    google.script.run.withSuccessHandler(function(datosGrafico) {
-      if (!contenedor) return;
-      if (!datosGrafico || !datosGrafico.meses || datosGrafico.meses.length === 0) {
-        contenedor.innerHTML = `
-          <div class="text-center text-muted py-5">
-            <i class="bi bi-info-circle fs-3 text-warning d-block mb-2"></i>
-            No se registraron transacciones de tipo 'MERMA' con montos válidos.
-          </div>`;
-        return;
-      }
-
-      contenedor.innerHTML = '';
-      try {
-        var dataTable = new google.visualization.DataTable();
-        dataTable.addColumn('string', 'Mes');
-        dataTable.addColumn('number', 'Total Pérdida ($)');
-        dataTable.addColumn({type: 'string', role: 'annotation'});
-
-        var filas = [];
-        for (var i = 0; i < datosGrafico.meses.length; i++) {
-          var monto = datosGrafico.valores[i];
-          var etiquetaMonto = '$' + monto.toLocaleString('es-CL');
-          filas.push([datosGrafico.meses[i], monto, etiquetaMonto]);
-        }
-        dataTable.addRows(filas);
-
-        var options = {
-          hAxis: { title: 'Mes-Año', titleTextStyle: { color: '#475569', fontWeight: 'bold' } },
-          vAxis: { title: 'Pérdida Estimada ($)', minValue: 0, format: '$#,###' },
-          colors: ['#dc3545'],
-          legend: { position: 'none' },
-          chartArea: { width: '85%', height: '70%' },
-          annotations: { textStyle: { fontName: 'Segoe UI', fontSize: 11, color: '#333', bold: true } },
-          animation: { startup: true, duration: 800, easing: 'out' }
-        };
-
-        var chart = new google.visualization.ColumnChart(contenedor);
-        chart.draw(dataTable, options);
-      } catch(e) {
-        contenedor.innerHTML = '<div class="text-center text-danger py-5">❌ Error interno al procesar los gráficos.</div>';
-      }
-    }).obtenerEstadisticasMermasMensuales();
-  }
-
-  function ejecutarLogin() {
-    var user = document.getElementById("loginUsuario").value;
-    var pass = document.getElementById("loginClave").value;
-    
-    if (!user || !pass) {
-      document.getElementById("errorLogin").innerText = "Por favor, completa todos los campos.";
-      document.getElementById("errorLogin").classList.remove("d-none");
-      return;
-    }
-    
-    document.getElementById("errorLogin").classList.add("d-none");
-    
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (res && res.exito) {
-          USUARIO_LOGUEADO = res.nombre || user; 
-          ROL_LOGUEADO = res.rol || "";
-          SESION_ES_UTM = res.esUTM || false; 
-          MAPA_SUCURSAL_PLANILLA = res.mapaSucursalPlanilla || {};
-          
-          document.getElementById("txtNombreUsuario").innerText = USUARIO_LOGUEADO;
-          document.getElementById("seccionLogin").classList.add("d-none");
-          document.getElementById("seccionApp").classList.remove("d-none");
-          
-          var selectSuc = document.getElementById("pedidoSucursalOrigen");
-          if (selectSuc && res.sucursales) {
-            selectSuc.innerHTML = "";
-            res.sucursales.forEach(function(suc) {
-              selectSuc.innerHTML += `<option value="${suc}">${suc}</option>`;
-            });
-          }
-          
-          if (typeof poblarSelectorSucursalesReporte === "function" && res.sucursales) {
-            poblarSelectorSucursalesReporte(res.sucursales);
-          }
-
-          var selectMovimiento = document.getElementById("sucursal"); 
-          if (selectMovimiento && res.sucursales) {
-            selectMovimiento.innerHTML = '<option value="">Seleccione Destino...</option>';
-            res.sucursales.forEach(function(suc) {
-              selectMovimiento.innerHTML += `<option value="${suc}">${suc}</option>`;
-            });
-          }
-          
-          var listaItemsNav = document.querySelectorAll(".nav-tabs-custom .nav-link");
-          var subseccionDT = document.getElementById("subseccionPreAprobacionDT");
-          var subseccionBodega = document.getElementById("subseccionAdminPedidos");
-          var tabSubbodegas = document.getElementById("tab-subbodegas");
-          var tabReporteMensual = document.getElementById("tab-reporte-mensual");
-
-          var userUpper = USUARIO_LOGUEADO.toUpperCase();
-          var rolUpper = (res.rol || "").toUpperCase();
-
-          if (tabSubbodegas) {
-            if (userUpper.includes("ADMIN") || rolUpper.includes("ADMIN") || 
-                userUpper.includes("FINANZAS") || rolUpper.includes("FINANZAS") || 
-                userUpper.includes("ADMINISTRACION") || rolUpper.includes("ADMINISTRACION")) {
-              tabSubbodegas.style.setProperty("display", "block", "important");
-            } else {
-              tabSubbodegas.style.setProperty("display", "none", "important");
-            }
-          }
-          
-          if (userUpper.includes("ADMIN") || rolUpper.includes("ADMIN") || userUpper === "BODEGA") {
-            for (var i = 0; i < 6; i++) {
-              if (listaItemsNav[i]) listaItemsNav[i].style.setProperty("display", "block", "important");
-            }
-            if (tabReporteMensual) tabReporteMensual.style.setProperty("display", "block", "important");
-            if (subseccionDT) subseccionDT.style.setProperty("display", "none", "important");
-            if (subseccionBodega) subseccionBodega.style.setProperty("display", "block", "important");
-            cambiarPestaña('panel-manual', document.getElementById("tab-manual"));
-
-          } else if (userUpper.includes("FINANZAS") || rolUpper.includes("FINANZAS")) {
-            if (listaItemsNav[0]) listaItemsNav[0].style.setProperty("display", "block", "important");
-            if (listaItemsNav[1]) listaItemsNav[1].style.setProperty("display", "none", "important");
-            if (listaItemsNav[2]) listaItemsNav[2].style.setProperty("display", "none", "important");
-            if (listaItemsNav[3]) listaItemsNav[3].style.setProperty("display", "block", "important");
-            if (listaItemsNav[4]) listaItemsNav[4].style.setProperty("display", "block", "important");
-            if (listaItemsNav[5]) listaItemsNav[5].style.setProperty("display", "none", "important");
-            if (tabReporteMensual) tabReporteMensual.style.setProperty("display", "none", "important");
-            if (subseccionDT) subseccionDT.style.setProperty("display", "none", "important");
-            if (subseccionBodega) subseccionBodega.style.setProperty("display", "none", "important");
-            cambiarPestaña('panel-manual', document.getElementById("tab-manual"));
-
-          } else if (res.esDT || userUpper.includes("DIRECTOR") || userUpper.includes("TECNICO") || userUpper.includes("DT") || rolUpper.includes("DT")) {
-            if (listaItemsNav[0]) listaItemsNav[0].style.setProperty("display", "none", "important");
-            if (listaItemsNav[1]) listaItemsNav[1].style.setProperty("display", "block", "important");
-            if (listaItemsNav[2]) listaItemsNav[2].style.setProperty("display", "none", "important");
-            if (listaItemsNav[3]) listaItemsNav[3].style.setProperty("display", "block", "important");
-            if (listaItemsNav[4]) listaItemsNav[4].style.setProperty("display", "block", "important");
-            if (listaItemsNav[5]) listaItemsNav[5].style.setProperty("display", "none", "important");
-            if (tabReporteMensual) tabReporteMensual.style.setProperty("display", "none", "important");
-            if (subseccionDT) subseccionDT.style.setProperty("display", "block", "important");
-            if (subseccionBodega) subseccionBodega.style.setProperty("display", "none", "important");
-            cambiarPestaña('panel-aprobaciones', document.getElementById("tab-aprobaciones"));
-
-          } else {
-            for (var j = 0; j < 5; j++) {
-              if (listaItemsNav[j]) listaItemsNav[j].style.setProperty("display", "none", "important");
-            }
-            if (listaItemsNav[5]) listaItemsNav[5].style.setProperty("display", "block", "important");
-            if (tabReporteMensual) tabReporteMensual.style.setProperty("display", "block", "important");
-            cambiarPestaña('panel-solicitud', document.getElementById("tab-solicitud"));
-          }
-          
-          if (typeof actualizarCatalogoPorSucursalUTM === "function") {
-            actualizarCatalogoPorSucursalUTM();
-          } else if (res.insumosEspecificos && typeof renderizarTablaPedidosDinamica === "function") {
-            renderizarTablaPedidosDinamica(res.insumosEspecificos);
-          }
-          
-          mostrarNotificacion(`Sesión iniciada. Operador: ${USUARIO_LOGUEADO}`, "info");
-        } else {
-          document.getElementById("errorLogin").innerText = res ? res.mensaje : "Error desconocido en el servidor.";
-          document.getElementById("errorLogin").classList.remove("d-none");
-        }
-      })
-      .withFailureHandler(function(err) {
-        document.getElementById("errorLogin").innerText = "Error en el servidor: " + (err ? err.message : "Fallo de conexión.");
-        document.getElementById("errorLogin").classList.remove("d-none");
-      })
-      .ejecutarLogin(user, pass);
-  }
-
-  function recargarTablaSubbodegas() {
-    var tbody = document.getElementById("tbodySubbodegas");
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">⌛ Cargando datos por bodega...</td></tr>';
-
-    google.script.run.withSuccessHandler(function(lista) {
-      INSUMOS_MONITOR_CACHE = lista || [];
-      renderizarTablaSubbodegasHTML(INSUMOS_MONITOR_CACHE);
-    }).refrescarStocksInsumos();
-  }
-
-  function renderizarTablaSubbodegasHTML(lista) {
-    var tbody = document.getElementById("tbodySubbodegas");
-    if (!tbody) return;
-
-    if (!lista || lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay datos disponibles.</td></tr>';
-      return;
-    }
-
-    var html = "";
-    lista.forEach(function(item) {
-      var badgeFinal = item.stock <= 0 ? "bg-danger" : "bg-success";
-      var badgeBulnes = item.stockBulnes <= 0 ? "bg-secondary" : "bg-primary";
-      var badgePeninsula = item.stockPeninsula <= 0 ? "bg-secondary" : "bg-warning text-dark";
-
-      html += `<tr>
-        <td><span class="badge bg-dark">${item.id}</span></td>
-        <td><strong>${item.nombre}</strong></td>
-        <td class="text-center"><span class="badge ${badgeFinal} fs-6">${item.stock}</span></td>
-        <td class="text-center"><span class="badge ${badgeBulnes} fs-6">${item.stockBulnes}</span></td>
-        <td class="text-center"><span class="badge ${badgePeninsula} fs-6">${item.stockPeninsula}</span></td>
-      </tr>`;
-    });
-
-    tbody.innerHTML = html;
-  }
-
-  function filtrarSubbodegas() {
-    var texto = document.getElementById("txtBuscarSubbodegas").value.toLowerCase().trim();
-    if (texto === "") {
-      renderizarTablaSubbodegasHTML(INSUMOS_MONITOR_CACHE);
-      return;
-    }
-    var filtrados = INSUMOS_MONITOR_CACHE.filter(function(ins) {
-      return (ins.id && ins.id.toLowerCase().includes(texto)) || 
-             (ins.nombre && ins.nombre.toLowerCase().includes(texto));
-    });
-    renderizarTablaSubbodegasHTML(filtrados);
-  }
-
-  function renderizarTablaPedidosDinamica(insumosEspecificos) {
-    var tbody = document.getElementById("tbodyCarroPedido");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    var tablaElemento = tbody.closest("table");
-    var thead = tablaElemento ? tablaElemento.querySelector("thead") : null;
-
-    if (thead) {
-      if (SESION_ES_UTM) {
-        thead.innerHTML = `
-          <tr>
-            <th style="width: 10%;">Código</th>
-            <th style="width: 30%; text-align: left;">Descripción</th>
-            <th style="width: 8%;">U.M.</th>
-            <th style="width: 10%;">Stock</th>
-            <th style="width: 10%;">Sugerido</th>
-            <th style="width: 12%;">Cantidad a Solicitar</th>
-            <th style="width: 12%;">F. Vencimiento</th>
-            <th style="width: 8%;">Observaciones</th>
-          </tr>
-        `;
-      } else {
-        thead.innerHTML = `
-          <tr>
-            <th style="width: 12%;">Código</th>
-            <th style="width: 38%; text-align: left;">Descripción</th>
-            <th style="width: 10%;">U.M.</th>
-            <th style="width: 12%;">Stock</th>
-            <th style="width: 14%;">Cantidad a Solicitar</th>
-            <th style="width: 10%;">F. Vencimiento</th>
-            <th style="width: 4%;">Observaciones</th>
-          </tr>
-        `;
-      }
-    }
-
-    if (insumosEspecificos && insumosEspecificos.length > 0) {
-      insumosEspecificos.forEach(function(insumo) {
-        var idInsumo = insumo.id || "";
-        var nombreInsumo = insumo.nombre || "";
-        var umInsumo = insumo.um || "UN";
-        var stockInsumo = insumo.stock !== undefined ? insumo.stock : 0;
-        var stockFormateado = !isNaN(stockInsumo) ? Math.round(Number(stockInsumo)) : 0;
-        var badgeStockClass = stockFormateado <= 0 ? "bg-danger" : (stockFormateado <= 5 ? "bg-warning text-dark" : "bg-success");
-        
-        var sugeridoInsumo = insumo.sugerido !== undefined ? insumo.sugerido : 0;
-        var sug = !isNaN(sugeridoInsumo) ? Math.round(Number(sugeridoInsumo)) : 0;
-
-        if (SESION_ES_UTM) {
-          tbody.innerHTML += `
-            <tr>
-              <td><span class="badge bg-secondary">${idInsumo}</span></td>
-              <td style="text-align: left;"><strong>${nombreInsumo}</strong></td>
-              <td><span class="badge bg-light text-dark border">${umInsumo}</span></td>
-              <td class="text-center fw-bold"><span class="badge ${badgeStockClass}">${stockFormateado}</span></td>
-              <td class="text-center fw-bold text-primary">${sug}</td>
-              <td>
-                <input type="number" class="form-control form-control-sm cantidad-solicitar text-center mx-auto" 
-                       data-id="${idInsumo}" data-nombre="${nombreInsumo}" data-um="${umInsumo}"
-                       min="0" placeholder="0" style="max-width: 100px;" value="0">
-              </td>
-              <td>
-                <input type="date" class="form-control form-control-sm fecha-vencimiento-solicitar" 
-                       id="venc_${idInsumo}" style="font-size: 11px; padding: 4px;">
-              </td>
-              <td>
-                <input type="text" class="form-control form-control-sm observacion-solicitar" 
-                       id="obs_${idInsumo}" placeholder="Observaciones..." style="min-width: 100px;">
-              </td>
-            </tr>
-          `;
-        } else {
-          tbody.innerHTML += `
-            <tr>
-              <td><span class="badge bg-secondary">${idInsumo}</span></td>
-              <td style="text-align: left;"><strong>${nombreInsumo}</strong></td>
-              <td><span class="badge bg-light text-dark border">${umInsumo}</span></td>
-              <td class="text-center fw-bold"><span class="badge ${badgeStockClass}">${stockFormateado}</span></td>
-              <td>
-                <input type="number" class="form-control form-control-sm cantidad-solicitar text-center mx-auto" 
-                       data-id="${idInsumo}" data-nombre="${nombreInsumo}" data-um="${umInsumo}"
-                       min="0" placeholder="0" style="max-width: 120px;" value="0">
-              </td>
-              <td>
-                <input type="date" class="form-control form-control-sm fecha-vencimiento-solicitar" 
-                       id="venc_${idInsumo}" style="font-size: 11px; padding: 4px;">
-              </td>
-              <td>
-                <input type="text" class="form-control form-control-sm observacion-solicitar" 
-                       id="obs_${idInsumo}" placeholder="Observaciones..." style="min-width: 100px;">
-              </td>
-            </tr>
-          `;
-        }
-      });
-    } else {
-      var totalCols = SESION_ES_UTM ? 8 : 7;
-      tbody.innerHTML = `<tr><td colspan="${totalCols}" class="text-center text-muted py-3">No hay insumos configurados para esta sección.</td></tr>`;
-    }
-  }
-
-  function actualizarCatalogoPorSucursalUTM() {
-    var selectSucursal = document.getElementById("pedidoSucursalOrigen");
-    if (!selectSucursal) return;
-    
-    var sucursalSeleccionada = selectSucursal.value;
-    if (!sucursalSeleccionada) return;
-
-    SESION_ES_UTM = sucursalSeleccionada.toUpperCase().startsWith("UTM");
-    var pestañaReal = MAPA_SUCURSAL_PLANILLA[sucursalSeleccionada] || sucursalSeleccionada;
-
-    var tbody = document.getElementById("tbodyCarroPedido");
-    if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">⌛ Cargando catálogo para ' + sucursalSeleccionada + '...</td></tr>';
-    }
-
-    google.script.run
-      .withSuccessHandler(function(insumos) { 
-        renderizarTablaPedidosDinamica(insumos); 
-      })
-      .withFailureHandler(function(err) { 
-        mostrarNotificacion("Error al cambiar de sucursal.", "error"); 
-      })
-      .obtenerInsumosPorPestaña(pestañaReal);
-  }
-
-  function cargarPedidosPreAprobacionDT() {
-    var tbody = document.getElementById("tbodyPreAprobacionDT");
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">⌛ Cargando bandeja de pre-aprobaciones...</td></tr>';
-    document.getElementById("checkTodosDT").checked = false;
-    actualizarContadorDT();
-
-    google.script.run
-      .withSuccessHandler(function(pedidos) {
-        if (!pedidos || pedidos.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">No hay solicitudes esperando pre-aprobación en este momento.</td></tr>';
-          return;
-        }
-        var html = "";
-        pedidos.forEach(function(p) {
-          var inputCheck = "<input type='checkbox' class='check-dt-item' data-fila='" + p.fila + "' value='" + p.fila + "' onchange='actualizarContadorDT()'>";
-          var inputCantidadEditable = "<input type='number' step='0.01' min='0.01' class='form-control form-control-sm text-center input-dt-cantidad mx-auto' value='" + p.cantidad + "' style='max-width: 90px; font-weight: bold;'>";
-          
-          html += "<tr>" +
-                    "<td class='text-center'>" + inputCheck + "</td>" +
-                    "<td><small>" + p.fecha + "</small></td>" +
-                    "<td><strong>" + p.solicitante + "</strong></td>" +
-                    "<td><span class='badge bg-secondary'>" + p.sucursal + "</span></td>" +
-                    "<td><span class='badge bg-dark'>" + p.idInsumo + "</span></td>" +
-                    "<td style='text-align: left;'><strong>" + p.descripcion + "</strong></td>" +
-                    "<td class='text-center bg-light fw-bold'>" + p.um + "</td>" +
-                    "<td>" + inputCantidadEditable + "</td>" +
-                    "<td><small class='text-muted'>" + (p.observacion || "") + "</small></td>" +
-                  "</tr>";
-        });
-        tbody.innerHTML = html;
-      })
-      .withFailureHandler(function(err) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">❌ Error al conectar con el servidor.</td></tr>';
-      })
-      .obtenerPedidosPreAprobacionDT();
-  }
-
-  function seleccionarTodosDT(master) {
-    var checkboxes = document.querySelectorAll(".check-dt-item");
-    checkboxes.forEach(cb => cb.checked = master.checked);
-    actualizarContadorDT();
-  }
-
-  function actualizarContadorDT() {
-    var seleccionados = document.querySelectorAll(".check-dt-item:checked").length;
-    var lbl = document.getElementById("lblContadorDT");
-    if (lbl) lbl.innerText = seleccionados;
-  }
-
-  function ejecutarLiberacionMasivaDT() {
-    var check = document.querySelectorAll(".check-dt-item:checked");
-    if (check.length === 0) {
-      mostrarNotificacion("Selecciona al menos una solicitud para pre-aprobar.", "warning");
-      return;
-    }
-    
-    document.getElementById("modalTextoCantidad").innerHTML = `¿Desea pre-aprobar los <span class="text-primary fw-bold">${check.length}</span> ítems seleccionados?`;
-    var miModal = new bootstrap.Modal(document.getElementById('modalConfirmarDT'));
-    miModal.show();
-    
-    document.getElementById("btnAceptarModalDT").onclick = function() {
-      miModal.hide();
-      var btn = document.getElementById("btnLiberarDT");
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = "⌛ Enviando lote a Bodega...";
-      }
-
-      var datosAEnviar = [];
-      check.forEach(function(c) {
-        var tr = c.closest("tr");
-        if (!tr) return;
-        var inputCant = tr.querySelector(".input-dt-cantidad");
-        var nuevaCantidad = inputCant ? parseFloat(inputCant.value) || 0 : 0;
-        var idFila = parseInt(c.dataset.fila || c.getAttribute("data-fila"));
-
-        if (!isNaN(idFila) && idFila > 0 && nuevaCantidad > 0) {
-          datosAEnviar.push({ filaHoja: idFila, cantidadCorregida: nuevaCantidad });
-        }
-      });
-
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = "<i class='bi bi-check-all me-2'></i> Pre-Aprobar y Enviar a Bodega";
-          }
-          if (res && res.exito) {
-            mostrarNotificacion(`¡Éxito! Se liberaron ${res.procesados} ítems para Bodega.`, "success");
-            cargarPedidosPreAprobacionDT();
-          } else {
-            mostrarNotificacion("Error: " + (res ? res.mensaje : "Respuesta vacía"), "error");
-          }
-        })
-        .procesarPreAprobacionMasivaDT(datosAEnviar);
-    };
-  }
-
-  function cargarPedidosPendientesAdmin() {
-    var tbody = document.getElementById("tbodyAdminPedidos");
-    if(!tbody) return;
-    document.getElementById("checkTodosPedidos").checked = false;
-    actualizarContadorSeleccionados();
-
-    google.script.run.withSuccessHandler(function(pedidos) {
-      PEDIDOS_CARGADOS_CACHE = pedidos || [];
-      if(!pedidos || pedidos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-3">No hay solicitudes pendientes en este momento.</td></tr>';
-        return;
-      }
-      var html = "";
-      pedidos.forEach((p, index) => {
-        var sinStock = p.stockDisponible < p.cantidad;
-        var badgeStock = sinStock ? "bg-danger" : "bg-success";
-        
-        var contenidoCheck = sinStock 
-          ? `<i class="bi bi-x-circle-fill text-danger" title="Stock insuficiente (${p.stockDisponible})"></i>` 
-          : `<input type="checkbox" class="check-pedido-item" data-index="${index}" onchange="actualizarContadorSeleccionados()">`;
-        
-        var observacionInicial = p.observacionSolicitud || "";
-        var unidadMedidaReal = p.um || "UN";
-        var inputCantidadBodega = `<input type="number" step="0.01" min="0" class="form-control form-control-sm text-center fw-bold text-primary mx-auto" id="admin_cant_${index}" value="${p.cantidad}" style="max-width: 90px;" oninput="validarCantidadDespachoDinamica(${index})">`;
-
-        html += `<tr>
-          <td class="text-center" id="celda_check_${index}">${contenidoCheck}</td> 
-          <td><small>${p.fecha}</small></td>
-          <td><strong>${p.solicitante}</strong></td>
-          <td><span class="badge bg-secondary">${p.sucursal}</span></td>
-          <td><span class="badge bg-dark">${p.idInsumo}</span></td>
-          <td style="text-align: left;"><strong>${p.descripcion}</strong></td>
-          <td class="text-center small text-dark fw-bold bg-light" style="border: 1px solid #dee2e6;">${unidadMedidaReal}</td>
-          <td class="text-center">${inputCantidadBodega}</td> 
-          <td class="text-center"><span class="badge ${badgeStock}">${p.stockDisponible}</span></td>
-          <td>
-            <input type="date" class="form-control form-control-sm fvenc-admin-despacho" id="admin_venc_${index}" style="font-size: 11px; padding: 2px 4px;">
-          </td>
-          <td>
-            <input type="text" class="form-control form-control-sm obs-admin-despacho" id="admin_obs_${index}" value="${observacionInicial}" placeholder="Observaciones de despacho...">
-          </td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
-    }).obtenerPedidosPendientes(); 
-  }
-
-  function validarCantidadDespachoDinamica(index) {
-    var p = PEDIDOS_CARGADOS_CACHE[index];
-    if (!p) return;
-
-    var inputCant = document.getElementById("admin_cant_" + index);
-    var celdaCheck = document.getElementById("celda_check_" + index);
-    if (!inputCant || !celdaCheck) return;
-
-    var nuevaCantidad = parseFloat(inputCant.value) || 0;
-    var stockDisponible = parseFloat(p.stockDisponible) || 0;
-
-    if (nuevaCantidad > 0 && nuevaCantidad <= stockDisponible) {
-      celdaCheck.innerHTML = `<input type="checkbox" class="check-pedido-item" data-index="${index}" onchange="actualizarContadorSeleccionados()">`;
-    } else {
-      celdaCheck.innerHTML = `<i class="bi bi-x-circle-fill text-danger" title="Supera stock disponible (${stockDisponible})"></i>`;
-    }
-
-    actualizarContadorSeleccionados();
-  }
-
-  function procesarDespachoMasivoGlobal() {
-    var checkboxes = document.querySelectorAll(".check-pedido-item:checked");
-    if (checkboxes.length === 0) {
-      mostrarNotificacion("Por favor, selecciona al menos un ítem.", "warning");
-      return;
-    }
-    
-    document.getElementById("modalTextoBodegaCantidad").innerHTML = '¿Desea aprobar y despachar los <span class="text-primary fw-bold">' + checkboxes.length + '</span> ítems seleccionados?';
-    var miModalBodega = new bootstrap.Modal(document.getElementById('modalConfirmarBodega'));
-    miModalBodega.show();
-    
-    document.getElementById("btnAceptarModalBodega").onclick = function() {
-      miModalBodega.hide();
-      var btn = document.getElementById("btnDespachoGlobal");
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = "⌛ Despachando lote completo...";
-      }
-      
-      var bodegaDespachoSel = document.getElementById("bodegaDespachoAdmin") ? document.getElementById("bodegaDespachoAdmin").value : "BULNES";
-      var paqueteParaEnviar = [];
-      checkboxes.forEach(function(cb) {
-        var index = parseInt(cb.getAttribute("data-index"));
-        var p = PEDIDOS_CARGADOS_CACHE[index];
-        if (p) {
-          var inputCant = document.getElementById("admin_cant_" + index);
-          var cantidadFinal = inputCant ? parseFloat(inputCant.value) : parseFloat(p.cantidad);
-          var inputFecha = document.getElementById("admin_venc_" + index);
-          var fechaElegida = inputFecha && inputFecha.value ? inputFecha.value : "S/V";
-          var inputObs = document.getElementById("admin_obs_" + index); 
-          var observacionItem = inputObs ? inputObs.value.trim() : "";
-
-          paqueteParaEnviar.push({
-            fila: p.fila,
-            idPedido: p.idPedido || "",
-            cantOriginal: parseFloat(p.cantidad) || 0,
-            idInsumo: p.idInsumo,
-            descripcion: p.descripcion,
-            cantidad: cantidadFinal,
-            fechaVencimiento: fechaElegida,
-            observacion: observacionItem,
-            sucursal: p.sucursal,
-            notas: p.notes || p.notas || ""
-          });
-        }
-      });
-      
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = "<i class='bi bi-truck me-2'></i> Despachar Todo lo Seleccionado";
-          }
-          if (res && res.exito) {
-            mostrarNotificacion("¡Éxito! Se procesaron " + res.procesados + " ítems en un único lote.", "success");
-            cargarPedidosPendientesAdmin();
-            recargarTablaMonitor();
-            actualizarCatalogoDinamicoEnVivo();
-
-            if (res.pdfUrl) { 
-              if (res.pdfUrl.startsWith("http")) {
-                window.open(res.pdfUrl, '_blank'); 
-              } else if (res.pdfUrl.startsWith("data:application/pdf")) {
-                var pdfWin = window.open("", "_blank");
-                if (pdfWin) {
-                  pdfWin.document.write("<iframe width='100%' height='100%' style='border:none;' src='" + res.pdfUrl + "'></iframe>");
-                }
-              }
-            }
-            
-            if (res.pdfDeclaracionUrl) {
-              setTimeout(function() {
-                if (res.pdfDeclaracionUrl.startsWith("http")) {
-                  window.open(res.pdfDeclaracionUrl, '_blank');
-                } else if (res.pdfDeclaracionUrl.startsWith("data:application/pdf")) {
-                  var decWin = window.open("", "_blank");
-                  if (decWin) {
-                    decWin.document.write("<iframe width='100%' height='100%' style='border:none;' src='" + res.pdfDeclaracionUrl + "'></iframe>");
-                  }
-                }
-              }, 1000);
-              mostrarNotificacion("Se generó la Declaración por modificación de cantidades.", "info");
-            }
-
-          } else {
-            mostrarNotificacion(res.mensaje || "Error en el servidor.", "error");
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = "<i class='bi bi-truck me-2'></i> Despachar Todo lo Seleccionado";
-          }
-          mostrarNotificacion("Error al procesar el despacho masivo.", "error");
-        })
-        .procesarDespachoAgrupadoServidor(paqueteParaEnviar, USUARIO_LOGUEADO, bodegaDespachoSel);
-    };
-  }
-
-  function seleccionarTodosLosPedidos(master) {
-    var checkboxes = document.querySelectorAll(".check-pedido-item");
-    checkboxes.forEach(cb => { cb.checked = master.checked; });
-    actualizarContadorSeleccionados();
-  }
-
-  function actualizarContadorSeleccionados() {
-    var seleccionados = document.querySelectorAll(".check-pedido-item:checked").length;
-    document.getElementById("lblContadorSeleccionados").innerText = seleccionados;
-    document.getElementById("btnDespachoGlobal").disabled = (seleccionados === 0);
-  }
-
-  function enviarPedidoFijoAlServidor() {
-    var sucursalSel = document.getElementById("pedidoSucursalOrigen").value;
-    if (!sucursalSel) {
-      mostrarNotificacion("Debe seleccionar la sucursal de origen.", "error");
-      return;
-    }
-
-    var inputs = document.querySelectorAll(".cantidad-solicitar");
-    var itemsParaPedir = [];
-
-    inputs.forEach(function(input) {
-      var cant = parseFloat(input.value) || 0;
-      if (cant > 0) {
-        var idInsumo = input.getAttribute("data-id");
-        var nombreInsumo = input.getAttribute("data-nombre");
-        var umInsumo = input.getAttribute("data-um") || "UN";
-        var inputObs = document.getElementById("obs_" + idInsumo);
-        var observacionItem = inputObs ? inputObs.value.trim() : "";
-
-        itemsParaPedir.push({
-          idInsumo: idInsumo,
-          name: nombreInsumo,
-          um: umInsumo,
-          cantidad: cant,
-          observacion: observacionItem
-        });
-      }
-    });
-
-    if (itemsParaPedir.length === 0) {
-      mostrarNotificacion("Ingrese una cantidad mayor a 0 en al menos un insumo.", "error");
-      return;
-    }
-
-    var btn = document.getElementById("btnEnviarPedido");
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = "⌛ Transmitiendo solicitud...";
-    }
-
-    var contenedorPedido = {
-      operador: USUARIO_LOGUEADO,
-      rol: ROL_LOGUEADO || "CoordinadorUTM",
-      sucursalOrigen: sucursalSel,
-      notas: document.getElementById("pedidoNotas").value,
-      items: itemsParaPedir
-    };
-
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = "<i class='bi bi-send-check-fill me-1'></i> Despachar Solicitud de Pedido a Bodega";
-        }
-        if (res && res.exito) {
-          var numFolio = res.folio ? " N° " + res.folio : "";
-          mostrarNotificacion("¡Solicitud de Pedido" + numFolio + " enviada con éxito!", "success");
-
-          inputs.forEach(function(input) { input.value = "0"; });
-          document.querySelectorAll(".observacion-solicitar").forEach(function(obs) { obs.value = ""; });
-          document.getElementById("pedidoNotas").value = "";
-          
-          if (res.pdfUrl) {
-            if (res.pdfUrl.startsWith("http")) {
-              var win = window.open(res.pdfUrl, '_blank');
-              if (!win || win.closed || typeof win.closed == 'undefined') {
-                mostrarEnlaceDescargaSolicitud(res.pdfUrl, res.folio);
-              }
-            } else if (res.pdfUrl.startsWith("data:application/pdf")) {
-              var pdfWin = window.open("", "_blank");
-              if (pdfWin) {
-                pdfWin.document.write("<iframe width='100%' height='100%' style='border:none;' src='" + res.pdfUrl + "'></iframe>");
-              } else {
-                mostrarEnlaceDescargaSolicitud(res.pdfUrl, res.folio);
-              }
-            }
-            mostrarEnlaceDescargaSolicitud(res.pdfUrl, res.folio);
-          }
-        } else {
-          mostrarNotificacion(res.mensaje || "Error al procesar el pedido.", "error");
-        }
-      })
-      .withFailureHandler(function(err) {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = "<i class='bi bi-send-check-fill me-1'></i> Despachar Solicitud de Pedido a Bodega";
-        }
-        mostrarNotificacion("Error de conexión con el servidor.", "error");
-      })
-      .registrarSolicitudPedidoUsuario(contenedorPedido);
-  }
-
-  function mostrarEnlaceDescargaSolicitud(url, folio) {
-    var contenedor = document.getElementById("panel-solicitud");
-    var alertaExistente = document.getElementById("alertaDescargaSolicitud");
-    if (alertaExistente) alertaExistente.remove();
-
-    var div = document.createElement("div");
-    div.id = "alertaDescargaSolicitud";
-    div.className = "alert alert-success mt-3 d-flex justify-content-between align-items-center shadow-sm";
-    div.innerHTML = `
-      <div>
-        <i class="bi bi-file-earmark-pdf-fill text-danger fs-4 me-2"></i>
-        <strong>Comprobante de Solicitud N° ${folio || ''} listo.</strong>
-      </div>
-      <a href="${url}" target="_blank" download="Solicitud_N_${folio || ''}.pdf" class="btn btn-primary fw-bold">
-        <i class="bi bi-download me-1"></i> Ver / Guardar PDF
-      </a>
-    `;
-    contenedor.appendChild(div);
-  }
-
-  function actualizarCatalogoDinamicoEnVivo() {
-    google.script.run.withSuccessHandler(function(lista) {
-      INSUMOS_MONITOR_CACHE = lista || [];
-      var datalist = document.getElementById("listaInsumosDinamica");
-      if (datalist && lista) {
-        datalist.innerHTML = "";
-        lista.forEach(function(insumo) {
-          var opt = document.createElement("option");
-          opt.value = insumo.id + " - " + insumo.nombre;
-          opt.dataset.id = insumo.id;
-          opt.dataset.nombre = insumo.nombre;
-          opt.dataset.stock = insumo.stock;
-          opt.dataset.um = insumo.um;
-          opt.dataset.estado = insumo.estado;
-          opt.dataset.categoria = insumo.categoria;
-          datalist.appendChild(opt);
-        });
-      }
-    }).refrescarStocksInsumos();
-  }
-
-  function cerrarSesion() {
-    document.getElementById("seccionApp").classList.add("d-none");
-    document.getElementById("seccionLogin").classList.remove("d-none");
-    document.getElementById("loginUsuario").value = "";
-    document.getElementById("loginClave").value = "";
-    document.getElementById("errorLogin").classList.add("d-none");
-    
-    LOTE_MANUAL_ITEMS = [];
-    PEDIDOS_CARGADOS_CACHE = [];
-    renderizarTablaLoteManual();
-    
-    var tbody = document.getElementById("tbodyCarroPedido");
-    if(tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Cargando catálogo predefinido...</td></tr>';
-    
-    document.getElementById("notas").value = "";
-    document.getElementById("factura").value = "";
-    document.getElementById("pedidoNotas").value = "";
-    USUARIO_LOGUEADO = "";
-    ROL_LOGUEADO = "";
-  }
-</script>
+<!-- LÓGICA COMPLETA EN JAVASCRIPT PURO (SIN SERVIDOR EXTERNO NI AZURE) -->
+<script src="app.js"></script>
 </body>
 </html>
