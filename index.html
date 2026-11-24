@@ -4,103 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control de Inventarios y Operaciones - Bioclinic</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     :root {
-      --primary: #0b4f8a;
-      --primary-dark: #073763;
-      --accent: #e67e22;
-      --bg: #f0f4f8;
-      --card: #ffffff;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #cbd5e1;
-      --success: #16a34a;
-      --danger: #dc2626;
-      --warning: #d97706;
+      --primary: #0b4f8a; --primary-dark: #073763; --accent: #e67e22;
+      --bg: #f0f4f8; --card: #ffffff; --text: #1e293b; --muted: #64748b;
+      --border: #cbd5e1; --success: #16a34a; --danger: #dc2626;
     }
-    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); }
     .hidden { display: none !important; }
-
-    /* Login */
-    .login-wrapper {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
-    }
-    .login-card {
-      background: var(--card); width: 100%; max-width: 420px; padding: 32px;
-      border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center;
-    }
-    .brand-logo {
-      display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
-      border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; background: #fff;
-    }
+    .login-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: var(--card); width: 100%; max-width: 420px; padding: 32px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; }
+    .brand-logo { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; background: #fff; }
     .brand-text { text-align: left; line-height: 1.1; }
     .brand-title { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
     .brand-title .bio { color: var(--accent); }
     .brand-title .clinic { color: var(--primary); }
     .brand-sub { font-size: 9px; color: var(--muted); letter-spacing: 1px; font-weight: 600; }
-
     .form-group { text-align: left; margin-bottom: 16px; }
     .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-    input, select, textarea {
-      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
-      border-radius: 8px; font-size: 14px; background: #fff;
-    }
-    input:focus, select:focus { outline: none; border-color: var(--primary); }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px;
-      font-weight: 600; cursor: pointer; transition: 0.2s;
-    }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-primary { background: var(--primary); color: #fff; width: 100%; }
     .btn-primary:hover { background: var(--primary-dark); }
     .btn-sm { padding: 6px 12px; font-size: 12px; width: auto; }
     .btn-success { background: var(--success); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
-
-    /* App Layout */
-    header {
-      background: var(--primary); color: #fff; padding: 14px 24px;
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
-    }
+    header { background: var(--primary); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
     .header-info h1 { margin: 0; font-size: 18px; }
     .header-info span { font-size: 12px; opacity: 0.9; }
     .container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
-
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-    .tab-btn {
-      padding: 10px 16px; border: none; border-radius: 8px; background: #e2e8f0;
-      color: var(--text); font-weight: 600; cursor: pointer; font-size: 13px;
-    }
+    .tab-btn { padding: 10px 16px; border: none; border-radius: 8px; background: #e2e8f0; color: var(--text); font-weight: 600; cursor: pointer; font-size: 13px; }
     .tab-btn.active { background: var(--primary); color: #fff; }
-
-    .card {
-      background: var(--card); border-radius: 12px; padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;
-    }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .card h2 { margin-top: 0; font-size: 17px; color: var(--primary-dark); }
-    .grid-form {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end;
-    }
-
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f8fafc; font-weight: 700; color: var(--muted); }
-
-    .badge {
-      padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block;
-    }
+    .badge { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; display: inline-block; }
     .badge-pendiente { background: #fef3c7; color: #92400e; }
     .badge-aprobada { background: #dbeafe; color: #1e40af; }
     .badge-despachada { background: #dcfce7; color: #166534; }
     .badge-rechazada { background: #fee2e2; color: #991b1b; }
     .badge-bajo { background: #fee2e2; color: #991b1b; }
     .badge-ok { background: #dcfce7; color: #166534; }
-
     .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
     .alert-error { background: #fee2e2; color: #991b1b; }
     .alert-success { background: #dcfce7; color: #166534; }
@@ -108,7 +60,6 @@
 </head>
 <body>
 
-  <!-- PANTALLA DE LOGIN -->
   <div id="login-screen" class="login-wrapper">
     <div class="login-card">
       <div class="brand-logo">
@@ -127,21 +78,18 @@
 
       <div id="login-error" class="alert alert-error hidden"></div>
 
-      <form id="login-form">
-        <div class="form-group">
-          <label for="login-user">Usuario asignado</label>
-          <input type="text" id="login-user" placeholder="Ej: admin" required>
-        </div>
-        <div class="form-group">
-          <label for="login-pass">Contraseña de acceso</label>
-          <input type="password" id="login-pass" placeholder="••••••••" required>
-        </div>
-        <button type="submit" class="btn btn-primary" id="btn-login">Ingresar al Sistema</button>
-      </form>
+      <div class="form-group">
+        <label for="login-user">Usuario asignado</label>
+        <input type="text" id="login-user" placeholder="Ej: admin">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Contraseña de acceso</label>
+        <input type="password" id="login-pass" placeholder="••••••••">
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-login" onclick="iniciarLogin()">Ingresar al Sistema</button>
     </div>
   </div>
 
-  <!-- APLICACIÓN PRINCIPAL -->
   <div id="app-screen" class="hidden">
     <header>
       <div class="header-info">
@@ -149,43 +97,30 @@
         <span id="user-banner">Usuario: - | Rol: - | Sucursal: -</span>
       </div>
       <div style="display:flex; gap:8px;">
-        <button class="btn btn-sm btn-outline" onclick="cargarTodo()">Actualizar Datos</button>
-        <button class="btn btn-sm btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="cargarTodo()">Actualizar Datos</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
       </div>
     </header>
 
     <div class="container">
       <div id="global-msg" class="alert hidden"></div>
 
-      <!-- PESTAÑAS DE NAVEGACIÓN -->
       <div class="tabs">
-        <button class="tab-btn active" data-tab="tab-solicitudes" id="nav-solicitudes">Solicitudes de Sucursal</button>
-        <button class="tab-btn" data-tab="tab-inventario" id="nav-inventario">Inventario Central</button>
-        <button class="tab-btn" data-tab="tab-movimientos" id="nav-movimientos">Salidas y Mermas</button>
-        <button class="tab-btn" data-tab="tab-personal" id="nav-personal">Usuarios y Roles</button>
+        <button type="button" class="tab-btn active" data-tab="tab-solicitudes" id="nav-solicitudes">Solicitudes de Sucursal</button>
+        <button type="button" class="tab-btn" data-tab="tab-inventario" id="nav-inventario">Inventario Central</button>
+        <button type="button" class="tab-btn" data-tab="tab-movimientos" id="nav-movimientos">Salidas y Mermas</button>
+        <button type="button" class="tab-btn" data-tab="tab-personal" id="nav-personal">Usuarios y Roles</button>
       </div>
 
-      <!-- 1. SOLICITUDES -->
       <div id="tab-solicitudes" class="tab-panel">
-        <div class="card" id="card-nueva-solicitud">
+        <div class="card">
           <h2>Nueva Solicitud de Insumos</h2>
-          <form id="form-solicitud" class="grid-form">
-            <div>
-              <label>Producto</label>
-              <select id="sol-producto" required></select>
-            </div>
-            <div>
-              <label>Cantidad solicitada</label>
-              <input type="number" id="sol-cantidad" min="1" step="any" required>
-            </div>
-            <div>
-              <label>Observación (opcional)</label>
-              <input type="text" id="sol-obs" placeholder="Urgencia o detalle">
-            </div>
-            <div>
-              <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
-            </div>
-          </form>
+          <div class="grid-form">
+            <div><label>Producto</label><select id="sol-producto"></select></div>
+            <div><label>Cantidad solicitada</label><input type="number" id="sol-cantidad" min="1" step="any"></div>
+            <div><label>Observación (opcional)</label><input type="text" id="sol-obs" placeholder="Urgencia o detalle"></div>
+            <div><button type="button" class="btn btn-primary" onclick="crearSolicitud()">Enviar Solicitud</button></div>
+          </div>
         </div>
 
         <div class="card">
@@ -193,16 +128,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Sucursal</th>
-                  <th>Solicitante</th>
-                  <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Estado</th>
-                  <th>Obs.</th>
-                  <th>Acciones</th>
-                </tr>
+                <tr><th>Fecha</th><th>Sucursal</th><th>Solicitante</th><th>Producto</th><th>Cant.</th><th>Estado</th><th>Obs.</th><th>Acciones</th></tr>
               </thead>
               <tbody id="tbody-solicitudes"></tbody>
             </table>
@@ -210,42 +136,21 @@
         </div>
       </div>
 
-      <!-- 2. INVENTARIO CENTRAL (SOLO ADMIN) -->
       <div id="tab-inventario" class="tab-panel hidden">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
             <h2 style="margin:0;">Agregar / Actualizar Producto en Bodega</h2>
-            <button class="btn btn-sm btn-success" onclick="exportarExcel()">Exportar Todo a Excel (.xlsx)</button>
+            <button type="button" class="btn btn-sm btn-success" onclick="exportarExcel()">Exportar Todo a Excel (.xlsx)</button>
           </div>
-          <form id="form-producto" class="grid-form">
-            <div>
-              <label>Código</label>
-              <input type="text" id="inv-codigo" placeholder="Ej: INS-001" required>
-            </div>
-            <div>
-              <label>Descripción</label>
-              <input type="text" id="inv-desc" placeholder="Nombre del insumo" required>
-            </div>
-            <div>
-              <label>Categoría</label>
-              <input type="text" id="inv-cat" placeholder="Ej: Reactivos / Toma Muestra">
-            </div>
-            <div>
-              <label>Unidad</label>
-              <input type="text" id="inv-unidad" placeholder="Caja / Unidad / Frasco">
-            </div>
-            <div>
-              <label>Stock Actual</label>
-              <input type="number" id="inv-stock" min="0" step="any" required>
-            </div>
-            <div>
-              <label>Stock Mínimo</label>
-              <input type="number" id="inv-min" min="0" step="any" value="5" required>
-            </div>
-            <div>
-              <button type="submit" class="btn btn-primary">Guardar Producto</button>
-            </div>
-          </form>
+          <div class="grid-form">
+            <div><label>Código</label><input type="text" id="inv-codigo" placeholder="Ej: INS-001"></div>
+            <div><label>Descripción</label><input type="text" id="inv-desc" placeholder="Nombre del insumo"></div>
+            <div><label>Categoría</label><input type="text" id="inv-cat" placeholder="Ej: Reactivos"></div>
+            <div><label>Unidad</label><input type="text" id="inv-unidad" placeholder="Caja / Unidad"></div>
+            <div><label>Stock Actual</label><input type="number" id="inv-stock" min="0" step="any"></div>
+            <div><label>Stock Mínimo</label><input type="number" id="inv-min" min="0" step="any" value="5"></div>
+            <div><button type="button" class="btn btn-primary" onclick="guardarProducto()">Guardar Producto</button></div>
+          </div>
         </div>
 
         <div class="card">
@@ -253,15 +158,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Código</th>
-                  <th>Descripción</th>
-                  <th>Categoría</th>
-                  <th>Unidad</th>
-                  <th>Stock Actual</th>
-                  <th>Mínimo</th>
-                  <th>Estado</th>
-                </tr>
+                <tr><th>Código</th><th>Descripción</th><th>Categoría</th><th>Unidad</th><th>Stock Actual</th><th>Mínimo</th><th>Estado</th></tr>
               </thead>
               <tbody id="tbody-inventario"></tbody>
             </table>
@@ -269,34 +166,22 @@
         </div>
       </div>
 
-      <!-- 3. SALIDAS Y MERMAS (SOLO ADMIN) -->
       <div id="tab-movimientos" class="tab-panel hidden">
         <div class="card">
           <h2>Registrar Salida Manual o Merma</h2>
-          <form id="form-movimiento" class="grid-form">
+          <div class="grid-form">
             <div>
-              <label>Tipo de Movimiento</label>
-              <select id="mov-tipo" required>
+              <label>Tipo</label>
+              <select id="mov-tipo">
                 <option value="SALIDA">SALIDA (Despacho / Consumo)</option>
                 <option value="MERMA">MERMA (Vencimiento / Daño)</option>
               </select>
             </div>
-            <div>
-              <label>Producto</label>
-              <select id="mov-producto" required></select>
-            </div>
-            <div>
-              <label>Cantidad</label>
-              <input type="number" id="mov-cantidad" min="1" step="any" required>
-            </div>
-            <div>
-              <label>Destino o Motivo</label>
-              <input type="text" id="mov-motivo" placeholder="Ej: Sucursal Centro / Vencido" required>
-            </div>
-            <div>
-              <button type="submit" class="btn btn-primary">Registrar Movimiento</button>
-            </div>
-          </form>
+            <div><label>Producto</label><select id="mov-producto"></select></div>
+            <div><label>Cantidad</label><input type="number" id="mov-cantidad" min="1" step="any"></div>
+            <div><label>Destino o Motivo</label><input type="text" id="mov-motivo" placeholder="Ej: Sucursal Centro"></div>
+            <div><button type="button" class="btn btn-primary" onclick="registrarMovimiento()">Registrar Movimiento</button></div>
+          </div>
         </div>
 
         <div class="card">
@@ -304,15 +189,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Código</th>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Destino / Motivo</th>
-                  <th>Responsable</th>
-                </tr>
+                <tr><th>Fecha</th><th>Tipo</th><th>Código</th><th>Producto</th><th>Cantidad</th><th>Destino / Motivo</th><th>Responsable</th></tr>
               </thead>
               <tbody id="tbody-movimientos"></tbody>
             </table>
@@ -320,39 +197,24 @@
         </div>
       </div>
 
-      <!-- 4. USUARIOS Y ROLES (SOLO ADMIN) -->
       <div id="tab-personal" class="tab-panel hidden">
         <div class="card">
           <h2>Crear Usuario (Sucursal, Coordinador/DT o Admin)</h2>
-          <form id="form-usuario" class="grid-form">
+          <div class="grid-form">
+            <div><label>Usuario (Login)</label><input type="text" id="usr-user" placeholder="Ej: suc_norte"></div>
+            <div><label>Contraseña</label><input type="text" id="usr-pass" placeholder="Clave de acceso"></div>
+            <div><label>Nombre Completo</label><input type="text" id="usr-nombre" placeholder="Ej: María Pérez"></div>
             <div>
-              <label>Usuario (Login)</label>
-              <input type="text" id="usr-user" placeholder="Ej: suc_norte" required>
-            </div>
-            <div>
-              <label>Contraseña</label>
-              <input type="text" id="usr-pass" placeholder="Clave de acceso" required>
-            </div>
-            <div>
-              <label>Nombre Completo</label>
-              <input type="text" id="usr-nombre" placeholder="Ej: María Pérez" required>
-            </div>
-            <div>
-              <label>Rol en Sistema</label>
-              <select id="usr-rol" required>
+              <label>Rol</label>
+              <select id="usr-rol">
                 <option value="SUCURSAL">SUCURSAL (Crea solicitudes)</option>
                 <option value="DT">COORDINADOR / DT (Aprueba solicitudes)</option>
                 <option value="ADMIN">ADMINISTRADOR (Control total)</option>
               </select>
             </div>
-            <div>
-              <label>Sucursal Asignada</label>
-              <input type="text" id="usr-sucursal" placeholder="Ej: SUCURSAL NORTE" required>
-            </div>
-            <div>
-              <button type="submit" class="btn btn-primary">Crear Usuario</button>
-            </div>
-          </form>
+            <div><label>Sucursal Asignada</label><input type="text" id="usr-sucursal" placeholder="Ej: SUCURSAL NORTE"></div>
+            <div><button type="button" class="btn btn-primary" onclick="crearUsuario()">Crear Usuario</button></div>
+          </div>
         </div>
 
         <div class="card">
@@ -360,23 +222,258 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Nombre</th>
-                  <th>Rol</th>
-                  <th>Sucursal</th>
-                  <th>Acción</th>
-                </tr>
+                <tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Sucursal</th><th>Acción</th></tr>
               </thead>
               <tbody id="tbody-personal"></tbody>
             </table>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://xekvvmtfwobwttluknvn.supabase.co/rest/v1';
+    const SUPABASE_KEY = 'sb_publishable_-qdaMaDIAFsF9MCRZ9RjgQ_eM-AjhRE';
+    const HEADERS = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
+
+    let currentUser = null;
+    let cacheInventario = [], cacheSolicitudes = [], cacheMovimientos = [], cachePersonal = [];
+
+    async function sbFetch(path, options = {}) {
+      const res = await fetch(SUPABASE_URL + path, {
+        ...options,
+        headers: { ...HEADERS, ...(options.headers || {}) }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      return text ? JSON.parse(text) : [];
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.remove('hidden');
+      });
+    });
+
+    function mostrarMensaje(texto, tipo = 'success') {
+      const el = document.getElementById('global-msg');
+      el.textContent = texto;
+      el.className = `alert alert-${tipo}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4500);
+    }
+
+    document.getElementById('login-pass').addEventListener('keypress', e => {
+      if (e.key === 'Enter') iniciarLogin();
+    });
+
+    async function iniciarLogin() {
+      const usuario = document.getElementById('login-user').value.trim();
+      const password = document.getElementById('login-pass').value.trim();
+      const errBox = document.getElementById('login-error');
+      const btn = document.getElementById('btn-login');
+
+      if (!usuario || !password) return;
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Verificando...';
+
+      try {
+        const data = await sbFetch(`/personal?usuario=eq.${encodeURIComponent(usuario)}&password=eq.${encodeURIComponent(password)}&select=*`);
+        if (!data || data.length === 0) {
+          errBox.textContent = 'Usuario o contraseña incorrectos.';
+          errBox.classList.remove('hidden');
+        } else {
+          currentUser = data[0];
+          document.getElementById('login-screen').classList.add('hidden');
+          document.getElementById('app-screen').classList.remove('hidden');
+          document.getElementById('user-banner').textContent = `Usuario: ${currentUser.nombre} | Rol: ${currentUser.rol} | Sucursal: ${currentUser.sucursal}`;
+          const isAdmin = currentUser.rol === 'ADMIN';
+          document.getElementById('nav-inventario').classList.toggle('hidden', !isAdmin);
+          document.getElementById('nav-movimientos').classList.toggle('hidden', !isAdmin);
+          document.getElementById('nav-personal').classList.toggle('hidden', !isAdmin);
+          cargarTodo();
+        }
+      } catch (err) {
+        errBox.textContent = 'Error de conexión: ' + err.message;
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ingresar al Sistema';
+      }
+    }
+
+    function cerrarSesion() {
+      currentUser = null;
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('app-screen').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    async function cargarTodo() {
+      try {
+        const [inv, sol, mov, per] = await Promise.all([
+          sbFetch('/inventario?select=*&order=descripcion.asc'),
+          sbFetch('/solicitudes?select=*&order=fecha.desc'),
+          sbFetch('/movimientos?select=*&order=fecha.desc'),
+          sbFetch('/personal?select=*&order=nombre.asc')
+        ]);
+        cacheInventario = inv; cacheSolicitudes = sol; cacheMovimientos = mov; cachePersonal = per;
+        renderSelectoresProductos(); renderInventario(); renderSolicitudes(); renderMovimientos(); renderPersonal();
+      } catch (err) {
+        mostrarMensaje('Error al cargar datos: ' + err.message, 'error');
+      }
+    }
+
+    function renderSelectoresProductos() {
+      const opciones = cacheInventario.map(p => `<option value="${p.codigo}">${p.codigo} - ${p.descripcion} (Disp: ${p.stock_actual} ${p.unidad || ''})</option>`).join('');
+      const ph = '<option value="">-- Seleccione un producto --</option>';
+      document.getElementById('sol-producto').innerHTML = ph + opciones;
+      document.getElementById('mov-producto').innerHTML = ph + opciones;
+    }
+
+    async function crearSolicitud() {
+      const codigo = document.getElementById('sol-producto').value;
+      const cantidad = Number(document.getElementById('sol-cantidad').value);
+      const observacion = document.getElementById('sol-obs').value.trim();
+      const prod = cacheInventario.find(p => p.codigo === codigo);
+      if (!prod || cantidad <= 0) return mostrarMensaje('Seleccione producto y cantidad válida.', 'error');
+
+      await sbFetch('/solicitudes', {
+        method: 'POST',
+        body: JSON.stringify([{
+          sucursal: currentUser.sucursal, solicitante: currentUser.nombre,
+          codigo_producto: prod.codigo, descripcion: prod.descripcion,
+          cantidad, estado: 'PENDIENTE_DT', observacion
+        }])
+      });
+      document.getElementById('sol-cantidad').value = '';
+      document.getElementById('sol-obs').value = '';
+      mostrarMensaje('Solicitud enviada correctamente a Coordinación/DT.');
+      cargarTodo();
+    }
+
+    function renderSolicitudes() {
+      let lista = currentUser.rol === 'SUCURSAL' ? cacheSolicitudes.filter(s => s.sucursal === currentUser.sucursal) : cacheSolicitudes;
+      document.getElementById('tbody-solicitudes').innerHTML = lista.map(s => {
+        const fecha = new Date(s.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+        let badge = s.estado === 'APROBADA' ? 'badge-aprobada' : s.estado === 'DESPACHADA' ? 'badge-despachada' : s.estado === 'RECHAZADA' ? 'badge-rechazada' : 'badge-pendiente';
+        let acc = '-';
+        if ((currentUser.rol === 'DT' || currentUser.rol === 'ADMIN') && s.estado === 'PENDIENTE_DT') {
+          acc = `<button class="btn btn-sm btn-success" onclick="cambiarEstadoSolicitud(${s.id}, 'APROBADA')">Aprobar</button> <button class="btn btn-sm btn-danger" onclick="cambiarEstadoSolicitud(${s.id}, 'RECHAZADA')">Rechazar</button>`;
+        } else if (currentUser.rol === 'ADMIN' && s.estado === 'APROBADA') {
+          acc = `<button class="btn btn-sm btn-primary" onclick="despacharSolicitud(${s.id})">Despachar</button>`;
+        }
+        return `<tr><td>${fecha}</td><td><strong>${s.sucursal}</strong></td><td>${s.solicitante}</td><td>${s.codigo_producto} - ${s.descripcion}</td><td><strong>${s.cantidad}</strong></td><td><span class="badge ${badge}">${s.estado}</span></td><td>${s.observacion || ''}</td><td>${acc}</td></tr>`;
+      }).join('');
+    }
+
+    async function cambiarEstadoSolicitud(id, estado) {
+      await sbFetch(`/solicitudes?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ estado }) });
+      mostrarMensaje(`Solicitud marcada como ${estado}.`);
+      cargarTodo();
+    }
+
+    async function despacharSolicitud(id) {
+      const sol = cacheSolicitudes.find(s => s.id === id);
+      const prod = cacheInventario.find(p => p.codigo === sol.codigo_producto);
+      if (!sol || !prod || Number(prod.stock_actual) < Number(sol.cantidad)) return mostrarMensaje('Stock insuficiente en bodega.', 'error');
+
+      await sbFetch(`/inventario?codigo=eq.${encodeURIComponent(prod.codigo)}`, { method: 'PATCH', body: JSON.stringify({ stock_actual: Number(prod.stock_actual) - Number(sol.cantidad) }) });
+      await sbFetch(`/solicitudes?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ estado: 'DESPACHADA' }) });
+      await sbFetch('/movimientos', { method: 'POST', body: JSON.stringify([{ tipo: 'SALIDA', codigo_producto: prod.codigo, descripcion: prod.descripcion, cantidad: sol.cantidad, destino_motivo: `Despacho Solicitud #${sol.id} - ${sol.sucursal}`, responsable: currentUser.nombre }]) });
+      mostrarMensaje('Solicitud despachada y stock descontado.');
+      cargarTodo();
+    }
+
+    async function guardarProducto() {
+      const codigo = document.getElementById('inv-codigo').value.trim().toUpperCase();
+      const descripcion = document.getElementById('inv-desc').value.trim();
+      const categoria = document.getElementById('inv-cat').value.trim();
+      const unidad = document.getElementById('inv-unidad').value.trim();
+      const stock_actual = Number(document.getElementById('inv-stock').value);
+      const stock_minimo = Number(document.getElementById('inv-min').value);
+      if (!codigo || !descripcion) return mostrarMensaje('Complete código y descripción.', 'error');
+
+      await sbFetch('/inventario', { method: 'POST', headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify([{ codigo, descripcion, categoria, unidad, stock_actual, stock_minimo }]) });
+      ['inv-codigo','inv-desc','inv-cat','inv-unidad','inv-stock'].forEach(id => document.getElementById(id).value = '');
+      mostrarMensaje('Producto guardado en inventario.');
+      cargarTodo();
+    }
+
+    function renderInventario() {
+      document.getElementById('tbody-inventario').innerHTML = cacheInventario.map(p => {
+        const bajo = Number(p.stock_actual) <= Number(p.stock_minimo);
+        return `<tr><td><strong>${p.codigo}</strong></td><td>${p.descripcion}</td><td>${p.categoria || '-'}</td><td>${p.unidad || '-'}</td><td><strong>${p.stock_actual}</strong></td><td>${p.stock_minimo}</td><td><span class="badge ${bajo ? 'badge-bajo' : 'badge-ok'}">${bajo ? 'STOCK BAJO' : 'ÓPTIMO'}</span></td></tr>`;
+      }).join('');
+    }
+
+    async function registrarMovimiento() {
+      const tipo = document.getElementById('mov-tipo').value;
+      const codigo = document.getElementById('mov-producto').value;
+      const cantidad = Number(document.getElementById('mov-cantidad').value);
+      const destino_motivo = document.getElementById('mov-motivo').value.trim();
+      const prod = cacheInventario.find(p => p.codigo === codigo);
+      if (!prod || cantidad <= 0 || Number(prod.stock_actual) < cantidad) return mostrarMensaje('Verifique producto, cantidad o stock disponible.', 'error');
+
+      await sbFetch(`/inventario?codigo=eq.${encodeURIComponent(prod.codigo)}`, { method: 'PATCH', body: JSON.stringify({ stock_actual: Number(prod.stock_actual) - cantidad }) });
+      await sbFetch('/movimientos', { method: 'POST', body: JSON.stringify([{ tipo, codigo_producto: prod.codigo, descripcion: prod.descripcion, cantidad, destino_motivo, responsable: currentUser.nombre }]) });
+      document.getElementById('mov-cantidad').value = '';
+      document.getElementById('mov-motivo').value = '';
+      mostrarMensaje(`${tipo} registrada y descontada del stock.`);
+      cargarTodo();
+    }
+
+    function renderMovimientos() {
+      document.getElementById('tbody-movimientos').innerHTML = cacheMovimientos.map(m => {
+        const fecha = new Date(m.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+        return `<tr><td>${fecha}</td><td><span class="badge ${m.tipo === 'MERMA' ? 'badge-rechazada' : 'badge-aprobada'}">${m.tipo}</span></td><td>${m.codigo_producto}</td><td>${m.descripcion}</td><td><strong>${m.cantidad}</strong></td><td>${m.destino_motivo}</td><td>${m.responsable}</td></tr>`;
+      }).join('');
+    }
+
+    async function crearUsuario() {
+      const usuario = document.getElementById('usr-user').value.trim();
+      const password = document.getElementById('usr-pass').value.trim();
+      const nombre = document.getElementById('usr-nombre').value.trim();
+      const rol = document.getElementById('usr-rol').value;
+      const sucursal = document.getElementById('usr-sucursal').value.trim().toUpperCase();
+      if (!usuario || !password || !nombre || !sucursal) return mostrarMensaje('Complete todos los campos del usuario.', 'error');
+
+      await sbFetch('/personal', { method: 'POST', body: JSON.stringify([{ usuario, password, nombre, rol, sucursal }]) });
+      ['usr-user','usr-pass','usr-nombre','usr-sucursal'].forEach(id => document.getElementById(id).value = '');
+      mostrarMensaje('Usuario creado correctamente.');
+      cargarTodo();
+    }
+
+    function renderPersonal() {
+      document.getElementById('tbody-personal').innerHTML = cachePersonal.map(u => `<tr><td><strong>${u.usuario}</strong></td><td>${u.nombre}</td><td>${u.rol}</td><td>${u.sucursal}</td><td>${u.usuario !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>` : 'Principal'}</td></tr>`).join('');
+    }
+
+    async function eliminarUsuario(id) {
+      await sbFetch(`/personal?id=eq.${id}`, { method: 'DELETE' });
+      mostrarMensaje('Usuario eliminado.');
+      cargarTodo();
+    }
+
+    function exportarExcel() {
+      if (typeof XLSX === 'undefined') return mostrarMensaje('Librería Excel bloqueada por el navegador.', 'error');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cacheInventario), 'Inventario');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cacheSolicitudes), 'Solicitudes');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cacheMovimientos), 'Salidas_y_Mermas');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cachePersonal), 'Personal');
+      XLSX.writeFile(wb, `Bioclinic_Inventario_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+  </script>
 </body>
 </html>
