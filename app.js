@@ -1,6 +1,6 @@
 // Configuración de conexión a Supabase - Bioclinic
-const SUPABASE_URL = 'https://xekvvmtfwobwttluknvn.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_-qdaMaDIAFsF9MCRZ9RjgQ_eM-AjhRE';
+const SUPABASE_URL = 'https://inbjanhqikoqozsxcwnk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RnxQUIpE2Ak-2Q2VnXPFHA_xHwAdW59';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
@@ -15,12 +15,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
     btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+    const target = document.getElementById(btn.dataset.tab);
+    if (target) target.classList.remove('hidden');
   });
 });
 
 function mostrarMensaje(texto, tipo = 'success') {
   const el = document.getElementById('global-msg');
+  if (!el) return;
   el.textContent = texto;
   el.className = `alert alert-${tipo}`;
   el.classList.remove('hidden');
@@ -43,7 +45,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     .from('personal')
     .select('*')
     .eq('usuario', usuario)
-    .eq('password', password)
+    .eq('clave', password)
     .maybeSingle();
 
   btn.disabled = false;
@@ -62,14 +64,20 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 function iniciarSesionUI() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-screen').classList.remove('hidden');
-  document.getElementById('user-banner').textContent =
-    `Usuario: ${currentUser.nombre} | Rol: ${currentUser.rol} | Sucursal: ${currentUser.sucursal}`;
 
-  // Permisos visuales según Rol
-  const isAdmin = currentUser.rol === 'ADMIN';
-  document.getElementById('nav-inventario').classList.toggle('hidden', !isAdmin);
-  document.getElementById('nav-movimientos').classList.toggle('hidden', !isAdmin);
-  document.getElementById('nav-personal').classList.toggle('hidden', !isAdmin);
+  const sucursalTexto = currentUser.sucursales || currentUser.sucursal || '-';
+  document.getElementById('user-banner').textContent =
+    `Usuario: ${currentUser.usuario} | Rol: ${currentUser.rol} | Sucursal: ${sucursalTexto}`;
+
+  const rolUpper = (currentUser.rol || '').toUpperCase();
+  const isAdmin = rolUpper.includes('ADMIN');
+
+  const navInv = document.getElementById('nav-inventario');
+  const navMov = document.getElementById('nav-movimientos');
+  const navPer = document.getElementById('nav-personal');
+  if (navInv) navInv.classList.toggle('hidden', !isAdmin);
+  if (navMov) navMov.classList.toggle('hidden', !isAdmin);
+  if (navPer) navPer.classList.toggle('hidden', !isAdmin);
 
   cargarTodo();
 }
@@ -84,16 +92,40 @@ function cerrarSesion() {
 // CARGA CENTRAL DE DATOS
 async function cargarTodo() {
   const [invRes, solRes, movRes, perRes] = await Promise.all([
-    db.from('inventario').select('*').order('descripcion', { ascending: true }),
-    db.from('solicitudes').select('*').order('fecha', { ascending: false }),
-    db.from('movimientos').select('*').order('fecha', { ascending: false }),
-    db.from('personal').select('*').order('nombre', { ascending: true })
+    db.from('inventario_actual').select('*').order('nombre', { ascending: true }),
+    db.from('pedidos').select('*').order('created_at', { ascending: false }),
+    db.from('historial').select('*').order('created_at', { ascending: false }),
+    db.from('personal').select('*').order('usuario', { ascending: true })
   ]);
 
-  cacheInventario = invRes.data || [];
-  cacheSolicitudes = solRes.data || [];
-  cacheMovimientos = movRes.data || [];
-  cachePersonal = perRes.data || [];
+  cacheInventario = (invRes.data || []).map(p => ({
+    ...p,
+    codigo: p.id,
+    descripcion: p.nombre,
+    unidad: p.um,
+    stock_actual: Number(p.stock) || 0,
+    stock_minimo: Number(p.proyeccion_trimestral) || 0
+  }));
+
+  cacheSolicitudes = (solRes.data || []).map(s => ({
+    ...s,
+    fecha: s.created_at,
+    codigo_producto: s.id_insumo
+  }));
+
+  cacheMovimientos = (movRes.data || []).map(m => ({
+    ...m,
+    fecha: m.created_at,
+    codigo_producto: m.id_insumo,
+    destino_motivo: m.destino_origen || m.notas || '',
+    responsable: m.operador
+  }));
+
+  cachePersonal = (perRes.data || []).map(u => ({
+    ...u,
+    nombre: u.usuario,
+    sucursal: u.sucursales || ''
+  }));
 
   renderSelectoresProductos();
   renderInventario();
@@ -108,8 +140,10 @@ function renderSelectoresProductos() {
   ).join('');
 
   const placeholder = '<option value="">-- Seleccione un producto --</option>';
-  document.getElementById('sol-producto').innerHTML = placeholder + opciones;
-  document.getElementById('mov-producto').innerHTML = placeholder + opciones;
+  const selSol = document.getElementById('sol-producto');
+  const selMov = document.getElementById('mov-producto');
+  if (selSol) selSol.innerHTML = placeholder + opciones;
+  if (selMov) selMov.innerHTML = placeholder + opciones;
 }
 
 // 1. GESTIÓN DE SOLICITUDES
@@ -120,15 +154,21 @@ document.getElementById('form-solicitud').addEventListener('submit', async (e) =
   const observacion = document.getElementById('sol-obs').value.trim();
   const prod = cacheInventario.find(p => p.codigo === codigo);
 
-  if (!prod) return;
+  if (!prod || cantidad <= 0) return;
 
-  const { error } = await db.from('solicitudes').insert([{
-    sucursal: currentUser.sucursal,
-    solicitante: currentUser.nombre,
-    codigo_producto: prod.codigo,
+  const { data: ult } = await db.from('pedidos').select('folio').order('folio', { ascending: false }).limit(1);
+  const folio = (ult && ult.length ? Number(ult[0].folio) || 0 : 0) + 1;
+  const sucursalOrigen = (currentUser.sucursales || currentUser.sucursal || '').split(',')[0].trim() || currentUser.usuario;
+
+  const { error } = await db.from('pedidos').insert([{
+    folio,
+    sucursal: sucursalOrigen,
+    solicitante: currentUser.usuario,
+    id_insumo: prod.codigo,
     descripcion: prod.descripcion,
+    um: prod.unidad || 'UN',
     cantidad,
-    estado: 'PENDIENTE_DT',
+    estado: 'PRE-APROBACION',
     observacion
   }]);
 
@@ -143,27 +183,35 @@ document.getElementById('form-solicitud').addEventListener('submit', async (e) =
 
 function renderSolicitudes() {
   const tbody = document.getElementById('tbody-solicitudes');
+  if (!tbody) return;
   let lista = cacheSolicitudes;
+  const rolUpper = (currentUser.rol || '').toUpperCase();
 
-  // Si es SUCURSAL, solo ve las solicitudes de su propia sucursal
-  if (currentUser.rol === 'SUCURSAL') {
-    lista = lista.filter(s => s.sucursal === currentUser.sucursal);
+  if (rolUpper === 'USUARIO' || rolUpper === 'SUCURSAL') {
+    const misSucursales = (currentUser.sucursales || currentUser.sucursal || '')
+      .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (misSucursales.length) {
+      lista = lista.filter(s => misSucursales.includes((s.sucursal || '').toUpperCase()));
+    }
   }
 
   tbody.innerHTML = lista.map(s => {
-    const fecha = new Date(s.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+    const fecha = s.fecha ? new Date(s.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
     let badgeClass = 'badge-pendiente';
-    if (s.estado === 'APROBADA') badgeClass = 'badge-aprobada';
-    if (s.estado === 'DESPACHADA') badgeClass = 'badge-despachada';
+    if (s.estado === 'APROBADO_DT' || s.estado === 'APROBADA') badgeClass = 'badge-aprobada';
+    if (s.estado === 'DESPACHADA' || s.estado === 'DESPACHADO') badgeClass = 'badge-despachada';
     if (s.estado === 'RECHAZADA') badgeClass = 'badge-rechazada';
 
     let acciones = '-';
-    if ((currentUser.rol === 'DT' || currentUser.rol === 'ADMIN') && s.estado === 'PENDIENTE_DT') {
+    const esDT = rolUpper.includes('DIRECTOR') || rolUpper.includes('TECNICO') || rolUpper === 'DT';
+    const esAdmin = rolUpper.includes('ADMIN');
+
+    if ((esDT || esAdmin) && (s.estado === 'PRE-APROBACION' || s.estado === 'PENDIENTE_DT')) {
       acciones = `
-        <button class="btn btn-sm btn-success" onclick="cambiarEstadoSolicitud(${s.id}, 'APROBADA')">Aprobar</button>
+        <button class="btn btn-sm btn-success" onclick="cambiarEstadoSolicitud(${s.id}, 'APROBADO_DT')">Aprobar</button>
         <button class="btn btn-sm btn-danger" onclick="cambiarEstadoSolicitud(${s.id}, 'RECHAZADA')">Rechazar</button>
       `;
-    } else if (currentUser.rol === 'ADMIN' && s.estado === 'APROBADA') {
+    } else if (esAdmin && (s.estado === 'APROBADO_DT' || s.estado === 'APROBADA')) {
       acciones = `
         <button class="btn btn-sm btn-primary" onclick="despacharSolicitud(${s.id})">Despachar y Descontar Stock</button>
       `;
@@ -185,7 +233,7 @@ function renderSolicitudes() {
 }
 
 async function cambiarEstadoSolicitud(id, nuevoEstado) {
-  const { error } = await db.from('solicitudes').update({ estado: nuevoEstado }).eq('id', id);
+  const { error } = await db.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
   if (error) return mostrarMensaje('Error al actualizar estado', 'error');
   mostrarMensaje(`Solicitud marcada como ${nuevoEstado}.`);
   cargarTodo();
@@ -201,16 +249,20 @@ async function despacharSolicitud(id) {
   }
 
   const nuevoStock = Number(prod.stock_actual) - Number(sol.cantidad);
+  const { data: ult } = await db.from('historial').select('correlativo').eq('tipo', 'SALIDA').order('correlativo', { ascending: false }).limit(1);
+  const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
 
-  await db.from('inventario').update({ stock_actual: nuevoStock }).eq('codigo', prod.codigo);
-  await db.from('solicitudes').update({ estado: 'DESPACHADA' }).eq('id', id);
-  await db.from('movimientos').insert([{
+  await db.from('inventario_actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
+  await db.from('pedidos').update({ estado: 'DESPACHADO' }).eq('id', id);
+  await db.from('historial').insert([{
     tipo: 'SALIDA',
-    codigo_producto: prod.codigo,
+    id_insumo: prod.codigo,
     descripcion: prod.descripcion,
     cantidad: sol.cantidad,
-    destino_motivo: `Despacho Solicitud #${sol.id} - ${sol.sucursal}`,
-    responsable: currentUser.nombre
+    destino_origen: sol.sucursal,
+    referencia_nota: `Solicitud #${sol.folio || sol.id}`,
+    correlativo,
+    operador: currentUser.usuario
   }]);
 
   mostrarMensaje('Solicitud despachada y stock descontado automáticamente.');
@@ -221,15 +273,15 @@ async function despacharSolicitud(id) {
 document.getElementById('form-producto').addEventListener('submit', async (e) => {
   e.preventDefault();
   const payload = {
-    codigo: document.getElementById('inv-codigo').value.trim().toUpperCase(),
-    descripcion: document.getElementById('inv-desc').value.trim(),
+    id: document.getElementById('inv-codigo').value.trim().toUpperCase(),
+    nombre: document.getElementById('inv-desc').value.trim(),
     categoria: document.getElementById('inv-cat').value.trim(),
-    unidad: document.getElementById('inv-unidad').value.trim(),
-    stock_actual: Number(document.getElementById('inv-stock').value),
-    stock_minimo: Number(document.getElementById('inv-min').value)
+    um: document.getElementById('inv-unidad').value.trim(),
+    stock: Number(document.getElementById('inv-stock').value),
+    proyeccion_trimestral: Number(document.getElementById('inv-min').value)
   };
 
-  const { error } = await db.from('inventario').upsert([payload]);
+  const { error } = await db.from('inventario_actual').upsert([payload]);
   if (error) return mostrarMensaje('Error al guardar producto: ' + error.message, 'error');
 
   document.getElementById('form-producto').reset();
@@ -239,6 +291,7 @@ document.getElementById('form-producto').addEventListener('submit', async (e) =>
 
 function renderInventario() {
   const tbody = document.getElementById('tbody-inventario');
+  if (!tbody) return;
   tbody.innerHTML = cacheInventario.map(p => {
     const bajo = Number(p.stock_actual) <= Number(p.stock_minimo);
     return `
@@ -270,15 +323,19 @@ document.getElementById('form-movimiento').addEventListener('submit', async (e) 
   }
 
   const nuevoStock = Number(prod.stock_actual) - cantidad;
+  const { data: ult } = await db.from('historial').select('correlativo').eq('tipo', tipo).order('correlativo', { ascending: false }).limit(1);
+  const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
 
-  await db.from('inventario').update({ stock_actual: nuevoStock }).eq('codigo', prod.codigo);
-  await db.from('movimientos').insert([{
+  await db.from('inventario_actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
+  await db.from('historial').insert([{
     tipo,
-    codigo_producto: prod.codigo,
+    id_insumo: prod.codigo,
     descripcion: prod.descripcion,
     cantidad,
-    destino_motivo,
-    responsable: currentUser.nombre
+    destino_origen: destino_motivo,
+    notas: destino_motivo,
+    correlativo,
+    operador: currentUser.usuario
   }]);
 
   document.getElementById('form-movimiento').reset();
@@ -288,8 +345,9 @@ document.getElementById('form-movimiento').addEventListener('submit', async (e) 
 
 function renderMovimientos() {
   const tbody = document.getElementById('tbody-movimientos');
+  if (!tbody) return;
   tbody.innerHTML = cacheMovimientos.map(m => {
-    const fecha = new Date(m.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+    const fecha = m.fecha ? new Date(m.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
     return `
       <tr>
         <td>${fecha}</td>
@@ -309,10 +367,9 @@ document.getElementById('form-usuario').addEventListener('submit', async (e) => 
   e.preventDefault();
   const payload = {
     usuario: document.getElementById('usr-user').value.trim(),
-    password: document.getElementById('usr-pass').value.trim(),
-    nombre: document.getElementById('usr-nombre').value.trim(),
+    clave: document.getElementById('usr-pass').value.trim(),
     rol: document.getElementById('usr-rol').value,
-    sucursal: document.getElementById('usr-sucursal').value.trim().toUpperCase()
+    sucursales: document.getElementById('usr-sucursal').value.trim().toUpperCase()
   };
 
   const { error } = await db.from('personal').insert([payload]);
@@ -325,6 +382,7 @@ document.getElementById('form-usuario').addEventListener('submit', async (e) => 
 
 function renderPersonal() {
   const tbody = document.getElementById('tbody-personal');
+  if (!tbody) return;
   tbody.innerHTML = cachePersonal.map(u => `
     <tr>
       <td><strong>${u.usuario}</strong></td>
@@ -332,7 +390,7 @@ function renderPersonal() {
       <td>${u.rol}</td>
       <td>${u.sucursal}</td>
       <td>
-        ${u.usuario !== 'admin'
+        ${u.usuario.toLowerCase() !== 'admin'
           ? `<button class="btn btn-sm btn-danger" onclick="eliminarUsuario(${u.id})">Eliminar</button>`
           : 'Principal'}
       </td>
@@ -348,6 +406,9 @@ async function eliminarUsuario(id) {
 
 // EXPORTAR RESPALDO A EXCEL (ADMIN)
 function exportarExcel() {
+  if (typeof XLSX === 'undefined') {
+    return mostrarMensaje('Librería XLSX no cargada en la página.', 'error');
+  }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cacheInventario), 'Inventario');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cacheSolicitudes), 'Solicitudes');
