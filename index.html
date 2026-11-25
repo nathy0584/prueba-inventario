@@ -1,561 +1,8 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control de Inventarios - Bioclinic</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
-  <script>
-    google.charts.load('current', { packages: ['corechart'] });
-  </script>
-  <style>
-    body {
-      background: linear-gradient(135deg, #f0f4f8 0%, #dbeafe 100%);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      margin: 0;
-      padding: 30px 15px;
-    }
-    .login-container {
-      max-width: 450px;
-      margin: 60px auto;
-      background: #ffffff;
-      padding: 35px;
-      border-radius: 14px;
-      box-shadow: 0 15px 35px rgba(36, 75, 131, 0.15);
-      border: 1px solid #e2e8f0;
-    }
-    .card-custom {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #ffffff;
-      border-radius: 14px;
-      box-shadow: 0 15px 35px rgba(36, 75, 131, 0.12);
-      border: 1px solid #e2e8f0;
-      overflow: hidden;
-    }
-    .header-banner {
-      background-color: #244b83;
-      color: #ffffff;
-      padding: 20px 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 4px solid #e29626;
-    }
-    .logo-container-fix {
-      background: #ffffff;
-      padding: 8px 16px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-    .logo-container-fix svg { height: 42px; width: auto; }
-    .nav-tabs-custom { padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
-    .nav-tabs-custom .nav-link { border: none; color: #475569; font-weight: 600; padding: 16px 20px; border-bottom: 3px solid transparent; background: none; }
-    .nav-tabs-custom .nav-link.active { color: #244b83; border-bottom-color: #244b83; font-weight: 700; }
-    .tab-panel-content { display: none; padding: 20px; }
-    .tab-panel-content.active { display: block; }
-    .label-bold { font-weight: 600; color: #0f172a !important; margin-bottom: 8px; font-size: 0.95rem; }
-    .info-catalogo { font-size: 0.9rem; color: #1e293b; background: #f1f5f9; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #e29626; margin-top: 10px; font-weight: 500; }
-    .toast-container-custom { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-    .bioclinic-toast {
-      background: #ffffff; border-radius: 10px; padding: 16px 22px; margin-bottom: 10px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 14px;
-      transition: all 0.3s ease; border-left: 6px solid #244b83; min-width: 340px;
-    }
-    .bioclinic-toast.toast-success { border-left-color: #198754; }
-    .bioclinic-toast.toast-error { border-left-color: #dc3545; }
-    .bioclinic-toast.toast-info { border-left-color: #0dcaf0; }
-    .table-carro { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .badge-stock-size { min-width: 75px; display: inline-block; }
-  </style>
-</head>
-<body>
-
-<div id="toastContainer" class="toast-container-custom"></div>
-
-<div id="seccionLogin" class="login-container">
-  <div class="text-center mb-4">
-    <div class="logo-container-fix mb-3">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 75">
-        <g stroke-linecap="round">
-          <path d="M12,38 Q25,12 38,38 T64,38 T90,38" fill="none" stroke="#e29626" stroke-width="5"/>
-          <path d="M12,38 Q25,64 38,38 T64,38 T90,38" fill="none" stroke="#1d568f" stroke-width="5"/>
-        </g>
-        <g font-family="Arial, sans-serif">
-          <text x="105" y="38" font-weight="800" font-size="30" fill="#e29626">BIO</text>
-          <text x="156" y="38" font-weight="800" font-size="30" fill="#1d568f">CLINIC</text>
-          <text x="106" y="55" font-weight="600" font-size="11" fill="#5a6a85">LABORATORIO MÉDICO</text>
-        </g>
-      </svg>
-    </div>
-    <h5 class="fw-bold text-dark mt-2">Autenticación de Personal</h5>
-  </div>
-  <form onsubmit="event.preventDefault(); ejecutarLogin();">
-    <div class="mb-3">
-      <label class="form-label label-bold">Usuario asignado</label>
-      <input type="text" id="loginUsuario" class="form-control" required>
-    </div>
-    <div class="mb-4">
-      <label class="form-label label-bold">Contraseña de acceso</label>
-      <input type="password" id="loginClave" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary w-100 fw-bold" style="background-color: #244b83;">Ingresar al Sistema</button>
-    <div id="errorLogin" class="alert alert-danger mt-3 d-none small text-center"></div>
-  </form>
-</div>
-
-<div id="seccionApp" class="card card-custom d-none">
-  <div class="header-banner">
-    <div>
-      <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-box-seam-fill text-warning fs-3"></i>
-        <h3 class="m-0 fw-bold" style="color:white;">Control de Inventarios, salidas y Mermas</h3>
-      </div>
-      <div class="mt-2 small">
-        <i class="bi bi-person-fill text-warning"></i> Operador: <span id="txtNombreUsuario" class="fw-bold"></span>
-        <span class="mx-2">|</span>
-        <a href="#" onclick="cerrarSesion()" class="text-white-50 text-decoration-none"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a>
-      </div>
-    </div>
-    <div class="logo-container-fix">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 75">
-        <g stroke-linecap="round">
-          <path d="M12,38 Q25,12 38,38 T64,38 T90,38" fill="none" stroke="#e29626" stroke-width="5"/>
-          <path d="M12,38 Q25,64 38,38 T64,38 T90,38" fill="none" stroke="#1d568f" stroke-width="5"/>
-        </g>
-        <g font-family="Arial, sans-serif">
-          <text x="105" y="38" font-weight="800" font-size="30" fill="#e29626">BIO</text>
-          <text x="156" y="38" font-weight="800" font-size="30" fill="#1d568f">CLINIC</text>
-          <text x="106" y="55" font-weight="600" font-size="11" fill="#5a6a85">LABORATORIO MÉDICO</text>
-        </g>
-      </svg>
-    </div>
-  </div>
-
-  <div class="nav nav-tabs nav-tabs-custom">
-    <button class="nav-link active" id="tab-manual" onclick="cambiarPestaña('panel-manual', this)">Registro Manual (Lotes)</button>
-    <button class="nav-link" id="tab-aprobaciones" onclick="cambiarPestaña('panel-aprobaciones', this)">Aprobaciones Pendientes</button>
-    <button class="nav-link" id="tab-masivo" onclick="cambiarPestaña('panel-masivo', this)">Ingreso Masivo (CSV)</button>
-    <button class="nav-link" id="tab-monitor" onclick="cambiarPestaña('panel-monitor', this)">Saldos de Bodega</button>
-    <button class="nav-link" id="tab-mermas" onclick="cambiarPestaña('panel-mermas', this)">Monitor de Mermas</button>
-    <button class="nav-link" id="tab-solicitud" onclick="cambiarPestaña('panel-solicitud', this)">Solicitud de Pedido</button>
-    <button class="nav-link d-none" id="tab-subbodegas" onclick="cambiarPestaña('panel-subbodegas', this)">Stock por Bodegas</button>
-    <button class="nav-link" id="tab-reporte-mensual" onclick="cambiarPestaña('panel-reporte-mensual', this)">Reporte Mensual</button>
-  </div>
-
-  <!-- 1. REGISTRO MANUAL (LOTES) -->
-  <div id="panel-manual" class="tab-panel-content active">
-    <div class="card p-3 mb-4 bg-light border">
-      <h6 class="label-bold text-primary mb-3"><i class="bi bi-gear-fill me-1"></i> 1. Parámetros Generales del Movimiento</h6>
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <label class="form-label label-bold">Tipo de Movimiento</label>
-          <select class="form-select" id="tipoMovimiento" onchange="alternarCamposDinamicos()" required>
-            <option value="SALIDA" selected>SALIDA (Despacho Interno / Convenios)</option>
-            <option value="INGRESO">INGRESO (Compra / Recepción)</option>
-            <option value="MERMA">MERMA (Pérdidas / Vencidos)</option>
-            <option value="AJUSTE">AJUSTE (Conteo / Inventario Manual)</option>
-          </select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label label-bold">Notas / Justificación General</label>
-          <input type="text" class="form-control" id="notas" placeholder="Ej: Ajuste de existencias...">
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-6 d-none" id="bloqueProveedor">
-          <label class="form-label label-bold">Proveedor Asociado</label>
-          <select class="form-select" id="proveedor">
-            <option value="">Seleccione Proveedor...</option>
-          </select>
-        </div>
-        <div class="col-md-6" id="bloqueSucursal">
-          <label class="form-label label-bold">Convenio o Sucursal de Destino</label>
-          <select class="form-select" id="sucursal">
-            <option value="">Seleccione Destino...</option>
-          </select>
-        </div>
-        <div class="col-md-6 d-none" id="bloqueFactura">
-          <label class="form-label label-bold">Nº Factura / Documento</label>
-          <input type="text" class="form-control" id="factura">
-        </div>
-      </div>
-
-      <div class="row mt-2">
-        <div class="col-md-6 d-none" id="bloqueBodegaOrigen">
-          <label class="form-label label-bold">Bodega de Origen</label>
-          <select class="form-select" id="bodegaOrigen">
-            <option value="BULNES" selected>BULNES</option>
-            <option value="PENINSULA">PENINSULA</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="card p-3 mb-4 border" style="background-color: #f8fafc;">
-      <h6 class="label-bold text-secondary mb-3"><i class="bi bi-plus-circle-fill me-1"></i> 2. Agregar Insumos al Lote Corriente</h6>
-      <div class="row align-items-end g-3">
-        <div class="col-md-4">
-          <label class="form-label label-bold">Busque o seleccione el Insumo</label>
-          <input type="text" class="form-control" id="txtInputInsumo" list="listaInsumosDinamica" placeholder="Escriba para buscar..." oninput="mostrarMetadataInsumo()">
-          <datalist id="listaInsumosDinamica"></datalist>
-          <div id="boxMetadata" class="info-catalogo d-none"></div>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label label-bold">Cantidad</label>
-          <input type="number" step="0.01" class="form-control" id="cantidad" oninput="validarStockDisponible()" value="1">
-          <div id="alertaStockInsuficiente" class="text-danger small mt-1 d-none">❌ Supera stock.</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label label-bold"><i class="bi bi-calendar2-week"></i> F. Vencimiento</label>
-          <input type="date" class="form-control" id="vencimientoIndividual">
-        </div>
-        <div class="col-md-3">
-          <button type="button" onclick="agregarInsumoAlLoteManual()" class="btn btn-dark w-100 fw-bold">
-            <i class="bi bi-plus-square-fill me-1"></i> Incluir en el Lote
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <h6 class="label-bold"><i class="bi bi-layers-half text-warning me-1"></i> Materiales en el Lote de Registro Actual</h6>
-      <table class="table table-bordered table-striped table-carro align-middle">
-        <thead class="table-secondary small text-uppercase">
-          <tr>
-            <th>Código</th>
-            <th>Descripción</th>
-            <th style="width: 15%;" class="text-center">Cantidad</th>
-            <th style="width: 20%;" class="text-center">Vencimiento</th>
-            <th style="width: 10%; text-align:center;">Quitar</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyLoteManual">
-          <tr><td colspan="5" class="text-center text-muted py-3">No has agregado ningún elemento a este lote.</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <button type="button" onclick="procesarLoteManualCompleto()" class="btn btn-primary w-100 p-3 fw-bold fs-5" id="btnGuardarLoteManual" style="background-color: #244b83;" disabled>
-      <i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial
-    </button>
-  </div>
-
-  <!-- 2. APROBACIONES PENDIENTES -->
-  <div id="panel-aprobaciones" class="tab-panel-content">
-    <div id="subseccionPreAprobacionDT" class="card p-3 mb-4 border-warning bg-light d-none">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="label-bold m-0 text-dark"><i class="bi bi-shield-check text-warning me-2"></i>Bandeja de Pre-Aprobación (Director Técnico)</h5>
-        <button class="btn btn-sm btn-outline-dark fw-bold" onclick="cargarPedidosPreAprobacionDT()">🔄 Actualizar Pre-Aprobaciones</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
-          <thead class="table-warning text-dark">
-            <tr>
-              <th style="width: 5%;" class="text-center"><input type="checkbox" id="checkTodosDT" onchange="seleccionarTodosDT(this)"></th>
-              <th>Fecha/Hora</th>
-              <th>Solicitante</th>
-              <th>Sucursal Origen</th>
-              <th>Código</th>
-              <th>Descripción</th>
-              <th style="width: 8%;" class="text-center">U.M.</th>
-              <th style="width: 12%;" class="text-center">Cantidad</th>
-              <th>Observaciones del Solicitante</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyPreAprobacionDT">
-            <tr><td colspan="9" class="text-center text-muted">No hay solicitudes esperando pre-aprobación.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="mt-3 p-3 bg-white border rounded d-flex justify-content-between align-items-center">
-        <div>
-          <span class="fw-bold text-secondary">Ítems pre-seleccionados: </span>
-          <span id="lblContadorDT" class="badge bg-warning text-dark fs-6">0</span>
-        </div>
-        <button type="button" id="btnLiberarDT" onclick="ejecutarLiberacionMasivaDT()" class="btn btn-success p-2 px-4 fw-bold fs-6">
-          <i class="bi bi-check-all me-2"></i> Pre-Aprobar y Enviar a Bodega
-        </button>
-      </div>
-    </div>
-
-    <div id="subseccionAdminPedidos" class="card p-3 mb-4 border-primary bg-light d-none">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="label-bold m-0 text-dark"><i class="bi bi-bell-fill text-primary me-2"></i>Bandeja de Despacho de Pedidos Internos (Bodega)</h5>
-        <button class="btn btn-sm btn-outline-dark fw-bold" onclick="cargarPedidosPendientesAdmin()">🔄 Actualizar Bandeja</button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
-          <thead class="table-dark">
-            <tr>
-              <th style="width: 4%;" class="text-center"><input type="checkbox" id="checkTodosPedidos" onchange="seleccionarTodosLosPedidos(this)"></th>
-              <th style="width: 10%;">Fecha/Hora</th>
-              <th style="width: 11%;">Solicitante</th>
-              <th style="width: 11%;">Sucursal Origen</th>
-              <th style="width: 10%;">Código</th>
-              <th style="width: 20%;">Descripción</th>
-              <th style="width: 6%;" class="text-center">U.M.</th>
-              <th style="width: 8%;" class="text-center">Cant. Solicitada</th>
-              <th style="width: 6%;" class="text-center">Stock Bodega</th>
-              <th style="width: 9%;" class="text-center">F. Vencimiento</th>
-              <th style="width: 5%;">Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyAdminPedidos">
-            <tr><td colspan="11" class="text-center text-muted">No hay solicitudes pendientes en este momento.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="mt-3 p-3 bg-white border rounded d-flex justify-content-between align-items-center">
-        <div>
-          <span class="fw-bold text-secondary">Ítems seleccionados: </span>
-          <span id="lblContadorSeleccionados" class="badge bg-primary fs-6">0</span>
-        </div>
-        <button type="button" id="btnDespachoGlobal" onclick="procesarDespachoMasivoGlobal()" class="btn btn-primary p-2 px-4 fw-bold fs-6" disabled>
-          <i class="bi bi-truck me-2"></i> Despachar Todo lo Seleccionado
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. INGRESO MASIVO CSV -->
-  <div id="panel-masivo" class="tab-panel-content">
-    <h5 class="label-bold"><i class="bi bi-filetype-csv text-success me-2"></i>Importación Masiva de Movimientos (.CSV)</h5>
-    <div class="card p-4 bg-light">
-      <p class="small text-muted">Formato esperado por fila: <code>tipo,destino_origen,id_insumo,cantidad,fecha_vencimiento,bodega_origen,notas</code></p>
-      <input type="file" id="archivoCSV" class="form-control mb-3" accept=".csv">
-      <button onclick="procesarArchivoCSV()" class="btn btn-dark fw-bold">Procesar e Importar Filas</button>
-    </div>
-  </div>
-
-  <!-- 4. MONITOR SALDOS -->
-  <div id="panel-monitor" class="tab-panel-content">
-    <div class="row align-items-center mb-2">
-      <div class="col-8 col-sm-9">
-        <h5 class="label-bold m-0">Saldos de Bodega en Tiempo Real</h5>
-        <small class="text-muted fw-bold">Nº Registro: PO-ADM-02-R5</small>
-      </div>
-      <div class="col-4 col-sm-3 text-end">
-        <button class="btn btn-outline-primary btn-sm fw-bold" onclick="recargarTablaMonitor()">🔄 Sincronizar Stock</button>
-      </div>
-    </div>
-    <div class="mb-3">
-      <input type="text" id="txtBuscarMonitor" class="form-control" placeholder="🔍 Escriba código o nombre de insumo para filtrar al instante..." oninput="filtrarMonitorSaldos()">
-    </div>
-    <div class="table-responsive">
-      <table class="table table-striped table-bordered mt-3 align-middle" id="tablaSaldosBodega">
-        <thead class="table-dark">
-          <tr>
-            <th>Código</th>
-            <th>Descripción</th>
-            <th>Categoría</th>
-            <th>U.M</th>
-            <th class="text-center">Stock Final</th>
-            <th class="text-end">Valor Total</th>
-            <th class="text-center">Estado</th>
-            <th class="text-center">Proy. Trimestral</th>
-            <th class="text-center">Proy. Anual</th>
-            <th class="text-center">Alerta Cobertura</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyMonitor"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 5. MONITOR MERMAS -->
-  <div id="panel-mermas" class="tab-panel-content">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div>
-        <h5 class="label-bold m-0 text-danger"><i class="bi bi-trash3-fill me-2"></i>Historial de Mermas Valorizadas</h5>
-        <small class="text-muted fw-bold">Nº Registro: PO-ADM-02-R6</small>
-      </div>
-      <div>
-        <button class="btn btn-warning btn-sm text-dark fw-bold me-2" onclick="abrirModalGraficoMermas()">
-          <i class="bi bi-bar-chart-line me-1"></i> Historial Mermas Valorizadas
-        </button>
-        <button class="btn btn-outline-danger btn-sm fw-bold" onclick="recargarTablaMermas()">🔄 Sincronizar Mermas</button>
-      </div>
-    </div>
-    <table class="table table-striped table-bordered mt-3 align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>Código</th>
-          <th>Descripción del Material</th>
-          <th class="text-center">U.M.</th>
-          <th class="text-center">Cantidad</th>
-          <th class="text-end">Valorizado Pérdida</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyMermas">
-        <tr><td colspan="5" class="text-center py-4 text-muted">Cargando registros...</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- 6. STOCK POR BODEGAS -->
-  <div id="panel-subbodegas" class="tab-panel-content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div>
-        <h5 class="m-0 text-primary fw-bold"><i class="bi bi-houses-fill me-2"></i>Desglose Interno por Bodega</h5>
-        <small class="text-muted fw-bold">Vista exclusiva de Administración y Finanzas</small>
-      </div>
-      <button class="btn btn-outline-primary btn-sm fw-bold" onclick="recargarTablaSubbodegas()">🔄 Sincronizar Bodegas</button>
-    </div>
-    <div class="mb-3">
-      <input type="text" id="txtBuscarSubbodegas" class="form-control" placeholder="🔍 Buscar insumo por código o nombre..." oninput="filtrarSubbodegas()">
-    </div>
-    <div class="table-responsive">
-      <table class="table table-striped table-bordered align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th style="width: 15%;">Código</th>
-            <th style="width: 40%;">Nombre / Descripción</th>
-            <th style="width: 15%;" class="text-center">Stock Final (ISO)</th>
-            <th style="width: 15%;" class="text-center">Bodega Bulnes</th>
-            <th style="width: 15%;" class="text-center">Bodega Península</th>
-          </tr>
-        </thead>
-        <tbody id="tbodySubbodegas">
-          <tr><td colspan="5" class="text-center py-4 text-muted">Cargando datos por bodega...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 7. REPORTE MENSUAL -->
-  <div id="panel-reporte-mensual" class="tab-panel-content">
-    <div class="card p-3 mb-4 bg-white border border-primary">
-      <h5 class="label-bold text-primary mb-3"><i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Reporte Mensual de Pedidos vs. Despachos</h5>
-      <div class="row g-3 align-items-end">
-        <div class="col-md-4">
-          <label class="form-label label-bold">Seleccione Sucursal</label>
-          <select class="form-select" id="reporteSucursalSelect"></select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label label-bold">Mes</label>
-          <select class="form-select" id="reporteMesSelect">
-            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-            <option value="10">Octubre</option><option value="11" selected>Noviembre</option><option value="12">Diciembre</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label label-bold">Año</label>
-          <input type="number" class="form-control" id="reporteAnioInput" value="2026">
-        </div>
-        <div class="col-md-2">
-          <button type="button" class="btn btn-primary w-100 fw-bold" onclick="consultarReporteMensualBackend()">
-            <i class="bi bi-search me-1"></i> Generar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card p-3 shadow-sm bg-white">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h5 class="m-0 text-dark fw-bold">Sucursal: <span id="lblSucursalReporte" class="text-primary">-</span></h5>
-          <span class="badge bg-secondary fs-6 mt-1">Período: <span id="lblMesAnioReporte">-</span></span>
-        </div>
-        <button type="button" class="btn btn-danger fw-bold shadow-sm" id="btnDescargarPdfReporte" onclick="descargarPdfReporteMensual()" disabled>
-          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Imprimir / Descargar PDF
-        </button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle">
-          <thead class="table-dark">
-            <tr>
-              <th>INSUMO</th>
-              <th class="text-center" style="width: 8%;">U.M.</th>
-              <th class="text-center" style="width: 12%;">CANT. PEDIDO</th>
-              <th class="text-center" style="width: 18%;">N° SOLICITUD</th>
-              <th class="text-center" style="width: 14%;">CANT. DESPACHADA</th>
-              <th class="text-center" style="width: 18%;">N° SALIDA</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyReporteMensual">
-            <tr><td colspan="6" class="text-center text-muted py-4">Seleccione los parámetros y presione Generar.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- 8. SOLICITUD DE PEDIDO -->
-  <div id="panel-solicitud" class="tab-panel-content">
-    <div class="card p-3 mb-4 bg-white border border-primary">
-      <h5 class="label-bold text-primary mb-3"><i class="bi bi-file-earmark-plus-fill me-2"></i>Módulo de Solicitud de Pedido Interno</h5>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label label-bold">Identifique su Sucursal Solicitante</label>
-          <select class="form-select" id="pedidoSucursalOrigen" onchange="actualizarCatalogoPorSucursalUTM()"></select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label label-bold">Comentarios / Observaciones del Pedido</label>
-          <input type="text" class="form-control" id="pedidoNotas" placeholder="Ej: Reposición semanal...">
-        </div>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <h6 class="label-bold"><i class="bi bi-list-check text-success me-1"></i> Listado de Materiales Disponibles para Solicitud</h6>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped table-carro align-middle">
-          <thead class="table-primary small text-uppercase">
-            <tr>
-              <th style="width: 12%;">Código</th>
-              <th>Descripción del Material</th>
-              <th style="width: 8%; text-align:center;">U.M.</th>
-              <th style="width: 12%; text-align:center;">Stock</th>
-              <th style="width: 15%; text-align:center;">Cantidad a Solicitar</th>
-              <th style="width: 15%;">Observaciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyCarroPedido">
-            <tr><td colspan="6" class="text-center text-muted py-3">Cargando catálogo...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <button type="button" onclick="enviarPedidoFijoAlServidor()" class="btn btn-success w-100 p-3 fw-bold fs-5" id="btnEnviarPedido">
-      <i class="bi bi-send-check-fill me-1"></i> Despachar Solicitud de Pedido a Bodega
-    </button>
-  </div>
-</div>
-
-<!-- MODAL GRÁFICO MERMAS -->
-<div class="modal fade" id="modalGraficoMermas" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title"><i class="bi bi-bar-chart-line me-2"></i>Resumen Histórico de Mermas</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        <div id="mermasChartContainer" style="width: 100%; height: 400px;"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar Ventana</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
   const SUPABASE_URL = "https://inbjanhqikoqozsxcwnk.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_RnxQUIpE2Ak-2Q2VnXPFHA_xHwAdW59";
   const DIRECCION_MATRIZ = "Juan Antonio Ríos #2889";
+  const TABLA_INVENTARIO = "Inventario_Actual";
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const SUCURSALES_CONOCIDAS = [
@@ -622,9 +69,17 @@
   }
 
   async function cargarCatalogosIniciales() {
-    const { data: insumos } = await db.from("inventario_actual").select("*").order("nombre");
+    const { data: insumos, error: errIns } = await db
+      .from(TABLA_INVENTARIO)
+      .select("*")
+      .order("nombre");
+
+    if (errIns) {
+      mostrarNotificacion("Error al cargar inventario: " + errIns.message, "error");
+    }
+
     INSUMOS_MONITOR_CACHE = (insumos || []).map(r => ({
-      id: r.id,
+      id: String(r.id),
       nombre: r.nombre,
       categoria: r.categoria || "General",
       um: r.um || "UN",
@@ -725,13 +180,15 @@
     if (subDT) subDT.classList.toggle("d-none", !esDT);
     if (subBod) subBod.classList.toggle("d-none", !esAdminOBodega);
 
+    filtrarMonitorSaldos();
+    await actualizarCatalogoPorSucursalUTM();
+
     if (esAdminOBodega) {
       cambiarPestaña("panel-manual", document.getElementById("tab-manual"));
     } else if (esDT) {
       cambiarPestaña("panel-aprobaciones", document.getElementById("tab-aprobaciones"));
     } else {
       cambiarPestaña("panel-solicitud", document.getElementById("tab-solicitud"));
-      await actualizarCatalogoPorSucursalUTM();
     }
 
     mostrarNotificacion(`Sesión iniciada. Operador: ${USUARIO_LOGUEADO}`, "info");
@@ -762,6 +219,7 @@
     if (id === "panel-monitor") recargarTablaMonitor();
     if (id === "panel-mermas") recargarTablaMermas();
     if (id === "panel-subbodegas") recargarTablaSubbodegas();
+    if (id === "panel-solicitud") actualizarCatalogoPorSucursalUTM();
   }
 
   function alternarCamposDinamicos() {
@@ -881,10 +339,11 @@
     const correlativo = (ultimos && ultimos.length ? Number(ultimos[0].correlativo) || 0 : 0) + 1;
 
     for (const item of LOTE_MANUAL_ITEMS) {
+      const idFiltro = /^\d+$/.test(item.idInsumo) ? Number(item.idInsumo) : item.idInsumo;
       const { data: actual } = await db
-        .from("inventario_actual")
+        .from(TABLA_INVENTARIO)
         .select("stock, stock_bulnes, stock_peninsula")
-        .eq("id", item.idInsumo)
+        .eq("id", idFiltro)
         .maybeSingle();
 
       let bulnes = actual ? Number(actual.stock_bulnes) || 0 : 0;
@@ -902,11 +361,11 @@
       }
 
       const nuevoStock = bulnes + peninsula;
-      await db.from("inventario_actual").update({
+      await db.from(TABLA_INVENTARIO).update({
         stock: nuevoStock,
         stock_bulnes: bulnes,
         stock_peninsula: peninsula
-      }).eq("id", item.idInsumo);
+      }).eq("id", idFiltro);
 
       await db.from("historial").insert({
         operador: USUARIO_LOGUEADO,
@@ -941,6 +400,7 @@
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial';
     await cargarCatalogosIniciales();
+    filtrarMonitorSaldos();
     mostrarNotificacion(`¡Éxito! Lote registrado bajo el Comprobante N° ${correlativo}`);
   }
 
@@ -1064,9 +524,14 @@
   }
 
   async function actualizarCatalogoPorSucursalUTM() {
-    const suc = document.getElementById("pedidoSucursalOrigen").value;
+    const suc = document.getElementById("pedidoSucursalOrigen").value || "";
     SESION_ES_UTM = suc.toUpperCase().startsWith("UTM");
     const tbody = document.getElementById("tbodyCarroPedido");
+    if (!tbody) return;
+    if (!INSUMOS_MONITOR_CACHE.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No hay insumos cargados en el inventario.</td></tr>';
+      return;
+    }
     tbody.innerHTML = INSUMOS_MONITOR_CACHE.map(ins => `
       <tr>
         <td><span class="badge bg-secondary">${ins.id}</span></td>
@@ -1188,7 +653,7 @@
     const { data } = await db.from("pedidos").select("*").in("estado", ["APROBADO_DT", "APROBADO", "PENDIENTE"]).order("id", { ascending: true });
     PEDIDOS_CARGADOS_CACHE = (data || []).map(p => ({
       ...p,
-      stockDisponible: stockMap[p.id_insumo] ?? 0
+      stockDisponible: stockMap[String(p.id_insumo)] ?? 0
     }));
 
     const tbody = document.getElementById("tbodyAdminPedidos");
@@ -1260,7 +725,7 @@
         tipo: "SALIDA",
         destino_origen: p.sucursal,
         referencia_nota: `Solicitud N° ${p.folio}`,
-        id_insumo: p.id_insumo,
+        id_insumo: String(p.id_insumo),
         descripcion: p.descripcion,
         cantidad: cantFinal,
         fecha_vencimiento: venc,
@@ -1269,8 +734,9 @@
         bodega_origen: "BULNES"
       });
 
+      const idFiltro = /^\d+$/.test(String(p.id_insumo)) ? Number(p.id_insumo) : p.id_insumo;
       const nuevoStock = Math.max(0, Number(p.stockDisponible) - cantFinal);
-      await db.from("inventario_actual").update({ stock: nuevoStock }).eq("id", p.id_insumo);
+      await db.from(TABLA_INVENTARIO).update({ stock: nuevoStock }).eq("id", idFiltro);
       await db.from("pedidos").update({ estado: "DESPACHADO" }).eq("id", p.id);
 
       filasPdf.push(`<tr><td>${p.id_insumo}</td><td>${p.descripcion}</td><td>${p.um}</td><td>${cantFinal}</td><td>${venc}</td><td>${obs}</td></tr>`);
@@ -1311,19 +777,21 @@
 
     const cons = {};
     (pedidos || []).forEach(p => {
-      if (!cons[p.id_insumo]) {
-        cons[p.id_insumo] = { codigo: p.id_insumo, insumo: p.descripcion, um: p.um || "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
+      const cod = String(p.id_insumo);
+      if (!cons[cod]) {
+        cons[cod] = { codigo: cod, insumo: p.descripcion, um: p.um || "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
       }
-      cons[p.id_insumo].cantPedido += Number(p.cantidad) || 0;
-      if (p.folio) cons[p.id_insumo].sols.add(String(p.folio));
+      cons[cod].cantPedido += Number(p.cantidad) || 0;
+      if (p.folio) cons[cod].sols.add(String(p.folio));
     });
 
     (salidas || []).forEach(s => {
-      if (!cons[s.id_insumo]) {
-        cons[s.id_insumo] = { codigo: s.id_insumo, insumo: s.descripcion, um: "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
+      const cod = String(s.id_insumo);
+      if (!cons[cod]) {
+        cons[cod] = { codigo: cod, insumo: s.descripcion, um: "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
       }
-      cons[s.id_insumo].cantDespachada += Number(s.cantidad) || 0;
-      if (s.correlativo) cons[s.id_insumo].sals.add(String(s.correlativo));
+      cons[cod].cantDespachada += Number(s.cantidad) || 0;
+      if (s.correlativo) cons[cod].sals.add(String(s.correlativo));
     });
 
     const filas = Object.values(cons).map(x => ({
@@ -1421,5 +889,3 @@
     document.getElementById("loginClave").value = "";
   }
 </script>
-</body>
-</html>
