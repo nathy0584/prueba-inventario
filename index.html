@@ -1,767 +1,1425 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BIOCLINIC — Operaciones e Inventario</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Inventarios - Bioclinic</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+  <script>
+    google.charts.load('current', { packages: ['corechart'] });
+  </script>
   <style>
-    :root {
-      --primary: #0b4f8a;
-      --primary-dark: #083963;
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #cbd5e1;
-      --success: #15803d;
-      --warning: #b45309;
-      --danger: #b91c1c;
+    body {
+      background: linear-gradient(135deg, #f0f4f8 0%, #dbeafe 100%);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 30px 15px;
     }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); }
-    .hidden { display: none !important; }
-
-    /* Login */
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .login-card { background: var(--card); width: 100%; max-width: 380px; padding: 32px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.08); }
-    .login-card h1 { margin: 0 0 6px; color: var(--primary); font-size: 22px; text-align: center; }
-    .login-card p { margin: 0 0 20px; color: var(--muted); font-size: 13px; text-align: center; }
-
-    /* Header */
-    header { background: var(--primary); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-    header h2 { margin: 0; font-size: 18px; }
-    header small { opacity: .85; font-size: 12px; }
-    .header-actions { display: flex; gap: 8px; }
-
-    /* Container & Tabs */
-    .container { max-width: 1180px; margin: 22px auto; padding: 0 16px; }
-    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-    .tab-btn { background: #e2e8f0; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; color: var(--text); cursor: pointer; font-size: 13px; }
-    .tab-btn.active { background: var(--primary); color: #fff; }
-
-    /* Cards & Forms */
-    .card { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.05); margin-bottom: 20px; }
-    .card h3 { margin: 0 0 14px; color: var(--primary); font-size: 16px; }
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: end; }
-    label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text); }
-    input, select { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; }
-    input:focus, select:focus { outline: none; border-color: var(--primary); }
-
-    /* Buttons */
-    .btn { padding: 9px 15px; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-dark); }
-    .btn-light { background: #fff; color: var(--text); }
-    .btn-danger { background: #dc2626; color: #fff; }
-    .btn-success { background: #16a34a; color: #fff; }
-    .btn-warning { background: #d97706; color: #fff; }
-    .btn-sm { padding: 5px 9px; font-size: 12px; margin-right: 4px; }
-
-    /* Tables */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f8fafc; color: var(--muted); font-weight: 700; font-size: 12px; }
-
-    /* Badges */
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-    .b-coord { background: #fef3c7; color: #92400e; }
-    .b-dt { background: #dbeafe; color: #1e40af; }
-    .b-aprob { background: #dcfce7; color: #166534; }
-    .b-desp { background: #e2e8f0; color: #334155; }
-    .b-rech { background: #fee2e2; color: #991b1b; }
-    .b-low { background: #fee2e2; color: #991b1b; }
-    .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; }
-
-    /* Checkboxes insumos */
-    .insumos-box { max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
-    .insumos-box label { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 0; cursor: pointer; }
-    .insumos-box input[type="checkbox"] { width: auto; }
+    .login-container {
+      max-width: 450px;
+      margin: 60px auto;
+      background: #ffffff;
+      padding: 35px;
+      border-radius: 14px;
+      box-shadow: 0 15px 35px rgba(36, 75, 131, 0.15);
+      border: 1px solid #e2e8f0;
+    }
+    .card-custom {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 15px 35px rgba(36, 75, 131, 0.12);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    .header-banner {
+      background-color: #244b83;
+      color: #ffffff;
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid #e29626;
+    }
+    .logo-container-fix {
+      background: #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .logo-container-fix svg { height: 42px; width: auto; }
+    .nav-tabs-custom { padding: 0 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; }
+    .nav-tabs-custom .nav-link { border: none; color: #475569; font-weight: 600; padding: 16px 20px; border-bottom: 3px solid transparent; background: none; }
+    .nav-tabs-custom .nav-link.active { color: #244b83; border-bottom-color: #244b83; font-weight: 700; }
+    .tab-panel-content { display: none; padding: 20px; }
+    .tab-panel-content.active { display: block; }
+    .label-bold { font-weight: 600; color: #0f172a !important; margin-bottom: 8px; font-size: 0.95rem; }
+    .info-catalogo { font-size: 0.9rem; color: #1e293b; background: #f1f5f9; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #e29626; margin-top: 10px; font-weight: 500; }
+    .toast-container-custom { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    .bioclinic-toast {
+      background: #ffffff; border-radius: 10px; padding: 16px 22px; margin-bottom: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 14px;
+      transition: all 0.3s ease; border-left: 6px solid #244b83; min-width: 340px;
+    }
+    .bioclinic-toast.toast-success { border-left-color: #198754; }
+    .bioclinic-toast.toast-error { border-left-color: #dc3545; }
+    .bioclinic-toast.toast-info { border-left-color: #0dcaf0; }
+    .table-carro { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .badge-stock-size { min-width: 75px; display: inline-block; }
   </style>
 </head>
 <body>
 
-  <!-- PANTALLA LOGIN -->
-  <div id="loginView" class="login-wrap">
-    <div class="login-card">
-      <h1>BIOCLINIC</h1>
-      <p>Operaciones, Solicitudes e Inventario</p>
-      <div style="margin-bottom:12px;">
-        <label>Usuario</label>
-        <input type="text" id="loginUser" placeholder="Ej: admin" />
+<div id="toastContainer" class="toast-container-custom"></div>
+
+<div id="seccionLogin" class="login-container">
+  <div class="text-center mb-4">
+    <div class="logo-container-fix mb-3">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 75">
+        <g stroke-linecap="round">
+          <path d="M12,38 Q25,12 38,38 T64,38 T90,38" fill="none" stroke="#e29626" stroke-width="5"/>
+          <path d="M12,38 Q25,64 38,38 T64,38 T90,38" fill="none" stroke="#1d568f" stroke-width="5"/>
+        </g>
+        <g font-family="Arial, sans-serif">
+          <text x="105" y="38" font-weight="800" font-size="30" fill="#e29626">BIO</text>
+          <text x="156" y="38" font-weight="800" font-size="30" fill="#1d568f">CLINIC</text>
+          <text x="106" y="55" font-weight="600" font-size="11" fill="#5a6a85">LABORATORIO MÉDICO</text>
+        </g>
+      </svg>
+    </div>
+    <h5 class="fw-bold text-dark mt-2">Autenticación de Personal</h5>
+  </div>
+  <form onsubmit="event.preventDefault(); ejecutarLogin();">
+    <div class="mb-3">
+      <label class="form-label label-bold">Usuario asignado</label>
+      <input type="text" id="loginUsuario" class="form-control" required>
+    </div>
+    <div class="mb-4">
+      <label class="form-label label-bold">Contraseña de acceso</label>
+      <input type="password" id="loginClave" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 fw-bold" style="background-color: #244b83;">Ingresar al Sistema</button>
+    <div id="errorLogin" class="alert alert-danger mt-3 d-none small text-center"></div>
+  </form>
+</div>
+
+<div id="seccionApp" class="card card-custom d-none">
+  <div class="header-banner">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-box-seam-fill text-warning fs-3"></i>
+        <h3 class="m-0 fw-bold" style="color:white;">Control de Inventarios, salidas y Mermas</h3>
       </div>
-      <div style="margin-bottom:16px;">
-        <label>Contraseña</label>
-        <input type="password" id="loginPass" placeholder="••••" />
+      <div class="mt-2 small">
+        <i class="bi bi-person-fill text-warning"></i> Operador: <span id="txtNombreUsuario" class="fw-bold"></span>
+        <span class="mx-2">|</span>
+        <a href="#" onclick="cerrarSesion()" class="text-white-50 text-decoration-none"><i class="bi bi-box-arrow-right"></i> Cerrar Sesión</a>
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="iniciarSesion()">Ingresar al Sistema</button>
-      <div id="loginError" class="error-msg"></div>
+    </div>
+    <div class="logo-container-fix">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 75">
+        <g stroke-linecap="round">
+          <path d="M12,38 Q25,12 38,38 T64,38 T90,38" fill="none" stroke="#e29626" stroke-width="5"/>
+          <path d="M12,38 Q25,64 38,38 T64,38 T90,38" fill="none" stroke="#1d568f" stroke-width="5"/>
+        </g>
+        <g font-family="Arial, sans-serif">
+          <text x="105" y="38" font-weight="800" font-size="30" fill="#e29626">BIO</text>
+          <text x="156" y="38" font-weight="800" font-size="30" fill="#1d568f">CLINIC</text>
+          <text x="106" y="55" font-weight="600" font-size="11" fill="#5a6a85">LABORATORIO MÉDICO</text>
+        </g>
+      </svg>
     </div>
   </div>
 
-  <!-- PANTALLA PRINCIPAL -->
-  <div id="appView" class="hidden">
-    <header>
+  <div class="nav nav-tabs nav-tabs-custom">
+    <button class="nav-link active" id="tab-manual" onclick="cambiarPestaña('panel-manual', this)">Registro Manual (Lotes)</button>
+    <button class="nav-link" id="tab-aprobaciones" onclick="cambiarPestaña('panel-aprobaciones', this)">Aprobaciones Pendientes</button>
+    <button class="nav-link" id="tab-masivo" onclick="cambiarPestaña('panel-masivo', this)">Ingreso Masivo (CSV)</button>
+    <button class="nav-link" id="tab-monitor" onclick="cambiarPestaña('panel-monitor', this)">Saldos de Bodega</button>
+    <button class="nav-link" id="tab-mermas" onclick="cambiarPestaña('panel-mermas', this)">Monitor de Mermas</button>
+    <button class="nav-link" id="tab-solicitud" onclick="cambiarPestaña('panel-solicitud', this)">Solicitud de Pedido</button>
+    <button class="nav-link d-none" id="tab-subbodegas" onclick="cambiarPestaña('panel-subbodegas', this)">Stock por Bodegas</button>
+    <button class="nav-link" id="tab-reporte-mensual" onclick="cambiarPestaña('panel-reporte-mensual', this)">Reporte Mensual</button>
+  </div>
+
+  <!-- 1. REGISTRO MANUAL (LOTES) -->
+  <div id="panel-manual" class="tab-panel-content active">
+    <div class="card p-3 mb-4 bg-light border">
+      <h6 class="label-bold text-primary mb-3"><i class="bi bi-gear-fill me-1"></i> 1. Parámetros Generales del Movimiento</h6>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label label-bold">Tipo de Movimiento</label>
+          <select class="form-select" id="tipoMovimiento" onchange="alternarCamposDinamicos()" required>
+            <option value="SALIDA" selected>SALIDA (Despacho Interno / Convenios)</option>
+            <option value="INGRESO">INGRESO (Compra / Recepción)</option>
+            <option value="MERMA">MERMA (Pérdidas / Vencidos)</option>
+            <option value="AJUSTE">AJUSTE (Conteo / Inventario Manual)</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label label-bold">Notas / Justificación General</label>
+          <input type="text" class="form-control" id="notas" placeholder="Ej: Ajuste de existencias...">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 d-none" id="bloqueProveedor">
+          <label class="form-label label-bold">Proveedor Asociado</label>
+          <select class="form-select" id="proveedor">
+            <option value="">Seleccione Proveedor...</option>
+          </select>
+        </div>
+        <div class="col-md-6" id="bloqueSucursal">
+          <label class="form-label label-bold">Convenio o Sucursal de Destino</label>
+          <select class="form-select" id="sucursal">
+            <option value="">Seleccione Destino...</option>
+          </select>
+        </div>
+        <div class="col-md-6 d-none" id="bloqueFactura">
+          <label class="form-label label-bold">Nº Factura / Documento</label>
+          <input type="text" class="form-control" id="factura">
+        </div>
+      </div>
+
+      <div class="row mt-2">
+        <div class="col-md-6 d-none" id="bloqueBodegaOrigen">
+          <label class="form-label label-bold">Bodega de Origen</label>
+          <select class="form-select" id="bodegaOrigen">
+            <option value="BULNES" selected>BULNES</option>
+            <option value="PENINSULA">PENINSULA</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-4 border" style="background-color: #f8fafc;">
+      <h6 class="label-bold text-secondary mb-3"><i class="bi bi-plus-circle-fill me-1"></i> 2. Agregar Insumos al Lote Corriente</h6>
+      <div class="row align-items-end g-3">
+        <div class="col-md-4">
+          <label class="form-label label-bold">Busque o seleccione el Insumo</label>
+          <input type="text" class="form-control" id="txtInputInsumo" list="listaInsumosDinamica" placeholder="Escriba para buscar..." oninput="mostrarMetadataInsumo()">
+          <datalist id="listaInsumosDinamica"></datalist>
+          <div id="boxMetadata" class="info-catalogo d-none"></div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label label-bold">Cantidad</label>
+          <input type="number" step="0.01" class="form-control" id="cantidad" oninput="validarStockDisponible()" value="1">
+          <div id="alertaStockInsuficiente" class="text-danger small mt-1 d-none">❌ Supera stock.</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label label-bold"><i class="bi bi-calendar2-week"></i> F. Vencimiento</label>
+          <input type="date" class="form-control" id="vencimientoIndividual">
+        </div>
+        <div class="col-md-3">
+          <button type="button" onclick="agregarInsumoAlLoteManual()" class="btn btn-dark w-100 fw-bold">
+            <i class="bi bi-plus-square-fill me-1"></i> Incluir en el Lote
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <h6 class="label-bold"><i class="bi bi-layers-half text-warning me-1"></i> Materiales en el Lote de Registro Actual</h6>
+      <table class="table table-bordered table-striped table-carro align-middle">
+        <thead class="table-secondary small text-uppercase">
+          <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th style="width: 15%;" class="text-center">Cantidad</th>
+            <th style="width: 20%;" class="text-center">Vencimiento</th>
+            <th style="width: 10%; text-align:center;">Quitar</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyLoteManual">
+          <tr><td colspan="5" class="text-center text-muted py-3">No has agregado ningún elemento a este lote.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button type="button" onclick="procesarLoteManualCompleto()" class="btn btn-primary w-100 p-3 fw-bold fs-5" id="btnGuardarLoteManual" style="background-color: #244b83;" disabled>
+      <i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial
+    </button>
+  </div>
+
+  <!-- 2. APROBACIONES PENDIENTES -->
+  <div id="panel-aprobaciones" class="tab-panel-content">
+    <div id="subseccionPreAprobacionDT" class="card p-3 mb-4 border-warning bg-light d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="label-bold m-0 text-dark"><i class="bi bi-shield-check text-warning me-2"></i>Bandeja de Pre-Aprobación (Director Técnico)</h5>
+        <button class="btn btn-sm btn-outline-dark fw-bold" onclick="cargarPedidosPreAprobacionDT()">🔄 Actualizar Pre-Aprobaciones</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+          <thead class="table-warning text-dark">
+            <tr>
+              <th style="width: 5%;" class="text-center"><input type="checkbox" id="checkTodosDT" onchange="seleccionarTodosDT(this)"></th>
+              <th>Fecha/Hora</th>
+              <th>Solicitante</th>
+              <th>Sucursal Origen</th>
+              <th>Código</th>
+              <th>Descripción</th>
+              <th style="width: 8%;" class="text-center">U.M.</th>
+              <th style="width: 12%;" class="text-center">Cantidad</th>
+              <th>Observaciones del Solicitante</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPreAprobacionDT">
+            <tr><td colspan="9" class="text-center text-muted">No hay solicitudes esperando pre-aprobación.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 p-3 bg-white border rounded d-flex justify-content-between align-items-center">
+        <div>
+          <span class="fw-bold text-secondary">Ítems pre-seleccionados: </span>
+          <span id="lblContadorDT" class="badge bg-warning text-dark fs-6">0</span>
+        </div>
+        <button type="button" id="btnLiberarDT" onclick="ejecutarLiberacionMasivaDT()" class="btn btn-success p-2 px-4 fw-bold fs-6">
+          <i class="bi bi-check-all me-2"></i> Pre-Aprobar y Enviar a Bodega
+        </button>
+      </div>
+    </div>
+
+    <div id="subseccionAdminPedidos" class="card p-3 mb-4 border-primary bg-light d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="label-bold m-0 text-dark"><i class="bi bi-bell-fill text-primary me-2"></i>Bandeja de Despacho de Pedidos Internos (Bodega)</h5>
+        <button class="btn btn-sm btn-outline-dark fw-bold" onclick="cargarPedidosPendientesAdmin()">🔄 Actualizar Bandeja</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th style="width: 4%;" class="text-center"><input type="checkbox" id="checkTodosPedidos" onchange="seleccionarTodosLosPedidos(this)"></th>
+              <th style="width: 10%;">Fecha/Hora</th>
+              <th style="width: 11%;">Solicitante</th>
+              <th style="width: 11%;">Sucursal Origen</th>
+              <th style="width: 10%;">Código</th>
+              <th style="width: 20%;">Descripción</th>
+              <th style="width: 6%;" class="text-center">U.M.</th>
+              <th style="width: 8%;" class="text-center">Cant. Solicitada</th>
+              <th style="width: 6%;" class="text-center">Stock Bodega</th>
+              <th style="width: 9%;" class="text-center">F. Vencimiento</th>
+              <th style="width: 5%;">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAdminPedidos">
+            <tr><td colspan="11" class="text-center text-muted">No hay solicitudes pendientes en este momento.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 p-3 bg-white border rounded d-flex justify-content-between align-items-center">
+        <div>
+          <span class="fw-bold text-secondary">Ítems seleccionados: </span>
+          <span id="lblContadorSeleccionados" class="badge bg-primary fs-6">0</span>
+        </div>
+        <button type="button" id="btnDespachoGlobal" onclick="procesarDespachoMasivoGlobal()" class="btn btn-primary p-2 px-4 fw-bold fs-6" disabled>
+          <i class="bi bi-truck me-2"></i> Despachar Todo lo Seleccionado
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. INGRESO MASIVO CSV -->
+  <div id="panel-masivo" class="tab-panel-content">
+    <h5 class="label-bold"><i class="bi bi-filetype-csv text-success me-2"></i>Importación Masiva de Movimientos (.CSV)</h5>
+    <div class="card p-4 bg-light">
+      <p class="small text-muted">Formato esperado por fila: <code>tipo,destino_origen,id_insumo,cantidad,fecha_vencimiento,bodega_origen,notas</code></p>
+      <input type="file" id="archivoCSV" class="form-control mb-3" accept=".csv">
+      <button onclick="procesarArchivoCSV()" class="btn btn-dark fw-bold">Procesar e Importar Filas</button>
+    </div>
+  </div>
+
+  <!-- 4. MONITOR SALDOS -->
+  <div id="panel-monitor" class="tab-panel-content">
+    <div class="row align-items-center mb-2">
+      <div class="col-8 col-sm-9">
+        <h5 class="label-bold m-0">Saldos de Bodega en Tiempo Real</h5>
+        <small class="text-muted fw-bold">Nº Registro: PO-ADM-02-R5</small>
+      </div>
+      <div class="col-4 col-sm-3 text-end">
+        <button class="btn btn-outline-primary btn-sm fw-bold" onclick="recargarTablaMonitor()">🔄 Sincronizar Stock</button>
+      </div>
+    </div>
+    <div class="mb-3">
+      <input type="text" id="txtBuscarMonitor" class="form-control" placeholder="🔍 Escriba código o nombre de insumo para filtrar al instante..." oninput="filtrarMonitorSaldos()">
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered mt-3 align-middle" id="tablaSaldosBodega">
+        <thead class="table-dark">
+          <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>Categoría</th>
+            <th>U.M</th>
+            <th class="text-center">Stock Final</th>
+            <th class="text-end">Valor Total</th>
+            <th class="text-center">Estado</th>
+            <th class="text-center">Proy. Trimestral</th>
+            <th class="text-center">Proy. Anual</th>
+            <th class="text-center">Alerta Cobertura</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyMonitor"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. MONITOR MERMAS -->
+  <div id="panel-mermas" class="tab-panel-content">
+    <div class="d-flex justify-content-between align-items-center mb-2">
       <div>
-        <h2>BIOCLINIC — Operaciones e Inventario</h2>
-        <small id="userBanner"></small>
+        <h5 class="label-bold m-0 text-danger"><i class="bi bi-trash3-fill me-2"></i>Historial de Mermas Valorizadas</h5>
+        <small class="text-muted fw-bold">Nº Registro: PO-ADM-02-R6</small>
       </div>
-      <div class="header-actions">
-        <button class="btn btn-light" onclick="cargarTodo()">Actualizar Datos</button>
-        <button class="btn btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
+      <div>
+        <button class="btn btn-warning btn-sm text-dark fw-bold me-2" onclick="abrirModalGraficoMermas()">
+          <i class="bi bi-bar-chart-line me-1"></i> Historial Mermas Valorizadas
+        </button>
+        <button class="btn btn-outline-danger btn-sm fw-bold" onclick="recargarTablaMermas()">🔄 Sincronizar Mermas</button>
       </div>
-    </header>
+    </div>
+    <table class="table table-striped table-bordered mt-3 align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Código</th>
+          <th>Descripción del Material</th>
+          <th class="text-center">U.M.</th>
+          <th class="text-center">Cantidad</th>
+          <th class="text-end">Valorizado Pérdida</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyMermas">
+        <tr><td colspan="5" class="text-center py-4 text-muted">Cargando registros...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    <div class="container">
-      <div class="tabs">
-        <button class="tab-btn active" id="tabBtnSol" onclick="verTab('sol')">Solicitudes y Flujo</button>
-        <button class="tab-btn" id="tabBtnInv" onclick="verTab('inv')">Inventario Central</button>
-        <button class="tab-btn" id="tabBtnMov" onclick="verTab('mov')">Salidas y Mermas</button>
-        <button class="tab-btn" id="tabBtnUsr" onclick="verTab('usr')">Usuarios, Roles e Insumos</button>
+  <!-- 6. STOCK POR BODEGAS -->
+  <div id="panel-subbodegas" class="tab-panel-content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="m-0 text-primary fw-bold"><i class="bi bi-houses-fill me-2"></i>Desglose Interno por Bodega</h5>
+        <small class="text-muted fw-bold">Vista exclusiva de Administración y Finanzas</small>
       </div>
+      <button class="btn btn-outline-primary btn-sm fw-bold" onclick="recargarTablaSubbodegas()">🔄 Sincronizar Bodegas</button>
+    </div>
+    <div class="mb-3">
+      <input type="text" id="txtBuscarSubbodegas" class="form-control" placeholder="🔍 Buscar insumo por código o nombre..." oninput="filtrarSubbodegas()">
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th style="width: 15%;">Código</th>
+            <th style="width: 40%;">Nombre / Descripción</th>
+            <th style="width: 15%;" class="text-center">Stock Final (ISO)</th>
+            <th style="width: 15%;" class="text-center">Bodega Bulnes</th>
+            <th style="width: 15%;" class="text-center">Bodega Península</th>
+          </tr>
+        </thead>
+        <tbody id="tbodySubbodegas">
+          <tr><td colspan="5" class="text-center py-4 text-muted">Cargando datos por bodega...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-      <!-- TAB 1: SOLICITUDES -->
-      <div id="tab-sol">
-        <div class="card" id="cardNuevaSol">
-          <h3>Nueva Solicitud de Insumos (Insumos asignados a tu perfil)</h3>
-          <div class="grid-form">
-            <div>
-              <label>Producto autorizado</label>
-              <select id="solProd"></select>
-            </div>
-            <div>
-              <label>Cantidad solicitada</label>
-              <input type="number" id="solCant" min="1" placeholder="Ej: 10" />
-            </div>
-            <div>
-              <label>Observación (opcional)</label>
-              <input type="text" id="solObs" placeholder="Urgencia o detalle" />
-            </div>
-            <div>
-              <button class="btn btn-primary" style="width:100%;" onclick="crearSolicitud()">Enviar Solicitud</button>
-            </div>
-          </div>
+  <!-- 7. REPORTE MENSUAL -->
+  <div id="panel-reporte-mensual" class="tab-panel-content">
+    <div class="card p-3 mb-4 bg-white border border-primary">
+      <h5 class="label-bold text-primary mb-3"><i class="bi bi-file-earmark-bar-graph-fill me-2"></i>Reporte Mensual de Pedidos vs. Despachos</h5>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label label-bold">Seleccione Sucursal</label>
+          <select class="form-select" id="reporteSucursalSelect"></select>
         </div>
-
-        <div class="card">
-          <h3>Historial y Cadena de Aprobación (Sucursal → Coordinador → V°B° DT → Bodega)</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Sucursal</th>
-                  <th>Solicitante</th>
-                  <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Estado</th>
-                  <th>Obs.</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tablaSolicitudes"></tbody>
-            </table>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label label-bold">Mes</label>
+          <select class="form-select" id="reporteMesSelect">
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11" selected>Noviembre</option><option value="12">Diciembre</option>
+          </select>
         </div>
-      </div>
-
-      <!-- TAB 2: INVENTARIO CENTRAL -->
-      <div id="tab-inv" class="hidden">
-        <div class="card" id="cardNuevoProd">
-          <h3>Registrar o Actualizar Producto en Bodega Central</h3>
-          <div class="grid-form">
-            <div>
-              <label>Código</label>
-              <input type="text" id="invCod" placeholder="Ej: INS-001" />
-            </div>
-            <div>
-              <label>Descripción</label>
-              <input type="text" id="invDesc" placeholder="Ej: Guantes Nitrilo M" />
-            </div>
-            <div>
-              <label>Categoría</label>
-              <input type="text" id="invCat" placeholder="Ej: Insumos Clínicos" />
-            </div>
-            <div>
-              <label>Unidad</label>
-              <input type="text" id="invUni" placeholder="Ej: Caja / Unidad" />
-            </div>
-            <div>
-              <label>Stock Actual</label>
-              <input type="number" id="invStock" min="0" value="0" />
-            </div>
-            <div>
-              <label>Stock Mínimo</label>
-              <input type="number" id="invMin" min="0" value="5" />
-            </div>
-            <div>
-              <button class="btn btn-primary" style="width:100%;" onclick="guardarProducto()">Guardar Producto</button>
-            </div>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label label-bold">Año</label>
+          <input type="number" class="form-control" id="reporteAnioInput" value="2026">
         </div>
-
-        <div class="card">
-          <h3>Stock Actual en Bodega</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Código</th>
-                  <th>Descripción</th>
-                  <th>Categoría</th>
-                  <th>Unidad</th>
-                  <th>Stock Actual</th>
-                  <th>Stock Mínimo</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="tablaInventario"></tbody>
-            </table>
-          </div>
+        <div class="col-md-2">
+          <button type="button" class="btn btn-primary w-100 fw-bold" onclick="consultarReporteMensualBackend()">
+            <i class="bi bi-search me-1"></i> Generar
+          </button>
         </div>
       </div>
+    </div>
 
-      <!-- TAB 3: SALIDAS Y MERMAS -->
-      <div id="tab-mov" class="hidden">
-        <div class="card">
-          <h3>Registrar Salida Directa o Merma</h3>
-          <div class="grid-form">
-            <div>
-              <label>Tipo</label>
-              <select id="movTipo">
-                <option value="SALIDA">SALIDA DIRECTA</option>
-                <option value="MERMA">MERMA / VENCIMIENTO</option>
-              </select>
-            </div>
-            <div>
-              <label>Producto</label>
-              <select id="movProd"></select>
-            </div>
-            <div>
-              <label>Cantidad</label>
-              <input type="number" id="movCant" min="1" />
-            </div>
-            <div>
-              <label>Destino / Motivo</label>
-              <input type="text" id="movMotivo" placeholder="Ej: Ajuste o merma" />
-            </div>
-            <div>
-              <button class="btn btn-primary" style="width:100%;" onclick="registrarMovimiento()">Registrar Movimiento</button>
-            </div>
-          </div>
+    <div class="card p-3 shadow-sm bg-white">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="m-0 text-dark fw-bold">Sucursal: <span id="lblSucursalReporte" class="text-primary">-</span></h5>
+          <span class="badge bg-secondary fs-6 mt-1">Período: <span id="lblMesAnioReporte">-</span></span>
         </div>
-
-        <div class="card">
-          <h3>Historial de Salidas, Despachos y Mermas</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Destino / Motivo</th>
-                  <th>Responsable</th>
-                </tr>
-              </thead>
-              <tbody id="tablaMovimientos"></tbody>
-            </table>
-          </div>
-        </div>
+        <button type="button" class="btn btn-danger fw-bold shadow-sm" id="btnDescargarPdfReporte" onclick="descargarPdfReporteMensual()" disabled>
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Imprimir / Descargar PDF
+        </button>
       </div>
-
-      <!-- TAB 4: USUARIOS, ROLES E INSUMOS ASIGNADOS -->
-      <div id="tab-usr" class="hidden">
-        <div class="card">
-          <h3>Crear / Actualizar Usuario y Asignar Insumos Permitidos</h3>
-          <div class="grid-form" style="margin-bottom:14px;">
-            <div>
-              <label>Usuario (login)</label>
-              <input type="text" id="usrUser" placeholder="Ej: suc_centro" />
-            </div>
-            <div>
-              <label>Contraseña</label>
-              <input type="text" id="usrPass" placeholder="Ej: 1234" />
-            </div>
-            <div>
-              <label>Nombre Completo</label>
-              <input type="text" id="usrNombre" placeholder="Ej: Enfermería Centro" />
-            </div>
-            <div>
-              <label>Rol en la Cadena</label>
-              <select id="usrRol">
-                <option value="SUCURSAL">SUCURSAL (Crea solicitudes)</option>
-                <option value="COORDINADOR">COORDINADOR (1° Aprobación)</option>
-                <option value="DT">DIRECTOR TÉCNICO (2° V°B° Final)</option>
-                <option value="BODEGA">BODEGA (Despacha e Inventario)</option>
-                <option value="ADMIN">ADMIN (Control Total)</option>
-              </select>
-            </div>
-            <div>
-              <label>Sucursal / Área</label>
-              <input type="text" id="usrSucursal" placeholder="Ej: SUCURSAL CENTRO" />
-            </div>
-            <div>
-              <label>Acceso a Insumos</label>
-              <select id="usrModoInsumos" onchange="toggleListaInsumos()">
-                <option value="TODOS">TODOS LOS INSUMOS</option>
-                <option value="ESPECIFICOS">SOLO INSUMOS SELECCIONADOS</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="contenedorCheckInsumos" class="hidden" style="margin-bottom:14px;">
-            <label>Selecciona los insumos que este usuario puede solicitar:</label>
-            <div id="listaCheckInsumos" class="insumos-box"></div>
-          </div>
-
-          <button class="btn btn-primary" onclick="guardarUsuario()">Guardar Usuario y Permisos</button>
-        </div>
-
-        <div class="card">
-          <h3>Personal Registrado</h3>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Nombre</th>
-                  <th>Rol</th>
-                  <th>Sucursal</th>
-                  <th>Insumos Autorizados</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="tablaUsuarios"></tbody>
-            </table>
-          </div>
-        </div>
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>INSUMO</th>
+              <th class="text-center" style="width: 8%;">U.M.</th>
+              <th class="text-center" style="width: 12%;">CANT. PEDIDO</th>
+              <th class="text-center" style="width: 18%;">N° SOLICITUD</th>
+              <th class="text-center" style="width: 14%;">CANT. DESPACHADA</th>
+              <th class="text-center" style="width: 18%;">N° SALIDA</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyReporteMensual">
+            <tr><td colspan="6" class="text-center text-muted py-4">Seleccione los parámetros y presione Generar.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://xekvvmtfwobwttluknvn.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_-qdaMaDIAFsF9MCRZ9RjgQ_eM-AjhRE';
+  <!-- 8. SOLICITUD DE PEDIDO -->
+  <div id="panel-solicitud" class="tab-panel-content">
+    <div class="card p-3 mb-4 bg-white border border-primary">
+      <h5 class="label-bold text-primary mb-3"><i class="bi bi-file-earmark-plus-fill me-2"></i>Módulo de Solicitud de Pedido Interno</h5>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label label-bold">Identifique su Sucursal Solicitante</label>
+          <select class="form-select" id="pedidoSucursalOrigen" onchange="actualizarCatalogoPorSucursalUTM()"></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label label-bold">Comentarios / Observaciones del Pedido</label>
+          <input type="text" class="form-control" id="pedidoNotas" placeholder="Ej: Reposición semanal...">
+        </div>
+      </div>
+    </div>
 
-    let currentUser = null;
-    let inventarioCache = [];
-    let solicitudesCache = [];
-    let usuariosCache = [];
+    <div class="mb-4">
+      <h6 class="label-bold"><i class="bi bi-list-check text-success me-1"></i> Listado de Materiales Disponibles para Solicitud</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-carro align-middle">
+          <thead class="table-primary small text-uppercase">
+            <tr>
+              <th style="width: 12%;">Código</th>
+              <th>Descripción del Material</th>
+              <th style="width: 8%; text-align:center;">U.M.</th>
+              <th style="width: 12%; text-align:center;">Stock</th>
+              <th style="width: 15%; text-align:center;">Cantidad a Solicitar</th>
+              <th style="width: 15%;">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCarroPedido">
+            <tr><td colspan="6" class="text-center text-muted py-3">Cargando catálogo...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <button type="button" onclick="enviarPedidoFijoAlServidor()" class="btn btn-success w-100 p-3 fw-bold fs-5" id="btnEnviarPedido">
+      <i class="bi bi-send-check-fill me-1"></i> Despachar Solicitud de Pedido a Bodega
+    </button>
+  </div>
+</div>
 
-    async function sbFetch(path, options = {}) {
-      const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-        ...(options.headers || {})
-      };
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Error de conexión');
-      }
-      const text = await res.text();
-      return text ? JSON.parse(text) : [];
+<!-- MODAL GRÁFICO MERMAS -->
+<div class="modal fade" id="modalGraficoMermas" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-bar-chart-line me-2"></i>Resumen Histórico de Mermas</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="mermasChartContainer" style="width: 100%; height: 400px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar Ventana</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://inbjanhqikoqozsxcwnk.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_RnxQUIpE2Ak-2Q2VnXPFHA_xHwAdW59";
+  const DIRECCION_MATRIZ = "Juan Antonio Ríos #2889";
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const SUCURSALES_CONOCIDAS = [
+    "HEMATOLOGIA", "MICROBIOLOGIA", "INMUNOQUIMICA",
+    "UTM ALTOBIO", "UTM BIOSUR", "UTM PENINSULA", "UTM BIOPRAT", "UTM ALTOBIOSUR",
+    "ADM ALTOBIO", "ADM BIOSUR", "ADM PENINSULA", "ADM BIOPRAT", "ADM ALTOBIOSUR",
+    "BIOEXPRESS", "ADMINISTRACION", "ESACHS", "MAHO", "CORMUDESI", "KUNAMASTA"
+  ];
+
+  var USUARIO_LOGUEADO = "";
+  var ROL_LOGUEADO = "";
+  var SESION_ES_UTM = false;
+  var LOTE_MANUAL_ITEMS = [];
+  var PEDIDOS_CARGADOS_CACHE = [];
+  var INSUMOS_MONITOR_CACHE = [];
+  var ULTIMO_REPORTE_MENSUAL = null;
+
+  function mostrarNotificacion(mensaje, tipo = "success") {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = `bioclinic-toast toast-${tipo}`;
+    const icono = tipo === "error" ? "bi-exclamation-triangle-fill text-danger"
+                : tipo === "info" ? "bi-info-circle-fill text-info"
+                : "bi-check-circle-fill text-success";
+    toast.innerHTML = `<i class="bi ${icono} fs-4"></i> <div class="fw-semibold text-dark">${mensaje}</div>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }, 4500);
+  }
+
+  function formatMonto(val) {
+    const num = parseFloat(val);
+    if (isNaN(num)) return "$0";
+    return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(num);
+  }
+
+  function imprimirHtmlEnVentana(titulo, htmlCuerpo) {
+    const win = window.open("", "_blank");
+    if (!win) {
+      mostrarNotificacion("Permite las ventanas emergentes para imprimir o guardar el comprobante.", "info");
+      return;
     }
+    win.document.write(`
+      <!DOCTYPE html>
+      <html><head><title>${titulo}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #333; padding: 6px 8px; font-size: 12px; }
+        th { background: #e2e8f0; text-transform: uppercase; }
+        @media print { .no-print { display: none; } }
+      </style></head>
+      <body>
+        <div class="no-print" style="margin-bottom:15px;">
+          <button onclick="window.print()">Imprimir / Guardar PDF</button>
+        </div>
+        <p style="font-size:11px;color:#555;margin:0;"><strong>LABORATORIO BIOCLINIC</strong> — ${DIRECCION_MATRIZ}</p>
+        ${htmlCuerpo}
+      </body></html>
+    `);
+    win.document.close();
+  }
 
-    async function iniciarSesion() {
-      const u = document.getElementById('loginUser').value.trim();
-      const p = document.getElementById('loginPass').value.trim();
-      const err = document.getElementById('loginError');
-      err.textContent = '';
+  async function cargarCatalogosIniciales() {
+    const { data: insumos } = await db.from("inventario_actual").select("*").order("nombre");
+    INSUMOS_MONITOR_CACHE = (insumos || []).map(r => ({
+      id: r.id,
+      nombre: r.nombre,
+      categoria: r.categoria || "General",
+      um: r.um || "UN",
+      stock: Number(r.stock) || 0,
+      totalValor: Number(r.total_valor) || 0,
+      estado: r.estado || "SIN STOCK",
+      precioUnitario: Number(r.precio_unitario) || 0,
+      proyeccionAnual: Number(r.proyeccion_anual) || 0,
+      proyeccionTrimestral: Number(r.proyeccion_trimestral) || 0,
+      stockBulnes: Number(r.stock_bulnes) || 0,
+      stockPeninsula: Number(r.stock_peninsula) || 0
+    }));
 
-      if (!u || !p) {
-        err.textContent = 'Ingresa usuario y contraseña.';
-        return;
-      }
-
-      try {
-        const data = await sbFetch(`personal?usuario=eq.${encodeURIComponent(u)}&password=eq.${encodeURIComponent(p)}&select=*`);
-        if (!data || data.length === 0) {
-          err.textContent = 'Usuario o contraseña incorrectos.';
-          return;
-        }
-        currentUser = data[0];
-        document.getElementById('loginView').classList.add('hidden');
-        document.getElementById('appView').classList.remove('hidden');
-        aplicarPermisosVista();
-        await cargarTodo();
-      } catch (e) {
-        err.textContent = 'Error de conexión: ' + e.message;
-      }
-    }
-
-    function cerrarSesion() {
-      currentUser = null;
-      document.getElementById('appView').classList.add('hidden');
-      document.getElementById('loginView').classList.remove('hidden');
-      document.getElementById('loginPass').value = '';
-    }
-
-    function aplicarPermisosVista() {
-      const r = currentUser.rol;
-      document.getElementById('userBanner').textContent =
-        `Usuario: ${currentUser.nombre} | Rol: ${r} | Sucursal: ${currentUser.sucursal}`;
-
-      // Visibilidad de pestañas según rol
-      document.getElementById('tabBtnUsr').classList.toggle('hidden', r !== 'ADMIN');
-      document.getElementById('tabBtnMov').classList.toggle('hidden', !(r === 'ADMIN' || r === 'BODEGA'));
-      document.getElementById('cardNuevoProd').classList.toggle('hidden', !(r === 'ADMIN' || r === 'BODEGA'));
-      verTab('sol');
-    }
-
-    function verTab(tab) {
-      ['sol', 'inv', 'mov', 'usr'].forEach(t => {
-        document.getElementById('tab-' + t).classList.add('hidden');
+    const datalist = document.getElementById("listaInsumosDinamica");
+    if (datalist) {
+      datalist.innerHTML = "";
+      INSUMOS_MONITOR_CACHE.forEach(ins => {
+        const opt = document.createElement("option");
+        opt.value = `${ins.id} - ${ins.nombre}`;
+        opt.dataset.id = ins.id;
+        opt.dataset.nombre = ins.nombre;
+        opt.dataset.stock = ins.stock;
+        opt.dataset.um = ins.um;
+        opt.dataset.estado = ins.estado;
+        opt.dataset.categoria = ins.categoria;
+        datalist.appendChild(opt);
       });
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-
-      document.getElementById('tab-' + tab).classList.remove('hidden');
-      const mapBtn = { sol: 'tabBtnSol', inv: 'tabBtnInv', mov: 'tabBtnMov', usr: 'tabBtnUsr' };
-      document.getElementById(mapBtn[tab]).classList.add('active');
     }
 
-    async function cargarTodo() {
-      await cargarInventario();
-      await cargarSolicitudes();
-      if (currentUser.rol === 'ADMIN' || currentUser.rol === 'BODEGA') {
-        await cargarMovimientos();
-      }
-      if (currentUser.rol === 'ADMIN') {
-        await cargarUsuarios();
-      }
-    }
-
-    async function cargarInventario() {
-      inventarioCache = await sbFetch('inventario?select=*&order=descripcion.asc');
-
-      // Filtrar productos autorizados para el usuario actual al solicitar
-      const permitidosRaw = (currentUser.insumos_permitidos || 'TODOS').trim();
-      const listaPermitidos = permitidosRaw === 'TODOS'
-        ? null
-        : permitidosRaw.split(',').map(x => x.trim()).filter(Boolean);
-
-      const productosParaPedir = listaPermitidos
-        ? inventarioCache.filter(item => listaPermitidos.includes(item.codigo))
-        : inventarioCache;
-
-      const selSol = document.getElementById('solProd');
-      selSol.innerHTML = '<option value="">-- Seleccione un producto autorizado --</option>' +
-        productosParaPedir.map(i => `<option value="${i.codigo}">${i.codigo} - ${i.descripcion} (Disp: ${i.stock_actual})</option>`).join('');
-
-      const selMov = document.getElementById('movProd');
-      selMov.innerHTML = '<option value="">-- Seleccione producto --</option>' +
-        inventarioCache.map(i => `<option value="${i.codigo}">${i.codigo} - ${i.descripcion} (Stock: ${i.stock_actual})</option>`).join('');
-
-      // Checkboxes en pestaña Usuarios
-      const box = document.getElementById('listaCheckInsumos');
-      box.innerHTML = inventarioCache.map(i => `
-        <label>
-          <input type="checkbox" class="chk-insumo" value="${i.codigo}" />
-          <span><strong>${i.codigo}</strong> - ${i.descripcion}</span>
-        </label>
-      `).join('');
-
-      // Tabla Inventario
-      const tbody = document.getElementById('tablaInventario');
-      tbody.innerHTML = inventarioCache.map(i => {
-        const bajo = Number(i.stock_actual) <= Number(i.stock_minimo);
-        return `
-          <tr>
-            <td><strong>${i.codigo}</strong></td>
-            <td>${i.descripcion}</td>
-            <td>${i.categoria || '-'}</td>
-            <td>${i.unidad || '-'}</td>
-            <td><strong>${i.stock_actual}</strong></td>
-            <td>${i.stock_minimo}</td>
-            <td>${bajo ? '<span class="badge b-low">STOCK BAJO</span>' : '<span class="badge b-aprob">OK</span>'}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    async function guardarProducto() {
-      const codigo = document.getElementById('invCod').value.trim().toUpperCase();
-      const descripcion = document.getElementById('invDesc').value.trim();
-      const categoria = document.getElementById('invCat').value.trim();
-      const unidad = document.getElementById('invUni').value.trim();
-      const stock_actual = Number(document.getElementById('invStock').value || 0);
-      const stock_minimo = Number(document.getElementById('invMin').value || 0);
-
-      if (!codigo || !descripcion) return alert('Código y descripción son obligatorios.');
-
-      await sbFetch('inventario?on_conflict=codigo', {
-        method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ codigo, descripcion, categoria, unidad, stock_actual, stock_minimo })
+    const { data: provs } = await db.from("proveedores").select("rut, nombre").order("nombre");
+    const selProv = document.getElementById("proveedor");
+    if (selProv && provs) {
+      selProv.innerHTML = '<option value="">Seleccione Proveedor...</option>';
+      provs.forEach(p => {
+        const texto = p.rut && p.nombre ? `${p.rut} - ${p.nombre}` : (p.rut || p.nombre);
+        selProv.innerHTML += `<option value="${texto}">${texto}</option>`;
       });
+    }
+  }
 
-      document.getElementById('invCod').value = '';
-      document.getElementById('invDesc').value = '';
-      await cargarInventario();
-      alert('Producto guardado en Bodega Central.');
+  async function ejecutarLogin() {
+    const user = document.getElementById("loginUsuario").value.trim();
+    const pass = document.getElementById("loginClave").value.trim();
+    const errBox = document.getElementById("errorLogin");
+    errBox.classList.add("d-none");
+
+    const { data, error } = await db
+      .from("personal")
+      .select("*")
+      .eq("usuario", user)
+      .eq("clave", pass)
+      .maybeSingle();
+
+    if (error || !data) {
+      errBox.innerText = error ? error.message : "Credenciales de acceso incorrectas.";
+      errBox.classList.remove("d-none");
+      return;
     }
 
-    async function cargarSolicitudes() {
-      let query = 'solicitudes?select=*&order=id.desc';
-      if (currentUser.rol === 'SUCURSAL') {
-        query = `solicitudes?sucursal=eq.${encodeURIComponent(currentUser.sucursal)}&select=*&order=id.desc`;
-      }
-      solicitudesCache = await sbFetch(query);
+    USUARIO_LOGUEADO = data.usuario;
+    ROL_LOGUEADO = data.rol || "usuario";
+    document.getElementById("txtNombreUsuario").innerText = USUARIO_LOGUEADO;
+    document.getElementById("seccionLogin").classList.add("d-none");
+    document.getElementById("seccionApp").classList.remove("d-none");
 
-      const tbody = document.getElementById('tablaSolicitudes');
-      tbody.innerHTML = solicitudesCache.map(s => {
-        const fecha = new Date(s.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
-        let badge = `<span class="badge b-coord">${s.estado}</span>`;
-        if (s.estado === 'PENDIENTE_COORDINADOR') badge = `<span class="badge b-coord">1. PENDIENTE COORDINADOR</span>`;
-        if (s.estado === 'PENDIENTE_DT') badge = `<span class="badge b-dt">2. PENDIENTE V°B° DT</span>`;
-        if (s.estado === 'APROBADA_DT') badge = `<span class="badge b-aprob">3. LISTA PARA BODEGA</span>`;
-        if (s.estado === 'DESPACHADA') badge = `<span class="badge b-desp">4. DESPACHADA</span>`;
-        if (s.estado === 'RECHAZADA') badge = `<span class="badge b-rech">RECHAZADA</span>`;
+    await cargarCatalogosIniciales();
 
-        let acciones = '-';
-        const r = currentUser.rol;
+    const userUpper = USUARIO_LOGUEADO.toUpperCase();
+    const rolUpper = ROL_LOGUEADO.toUpperCase();
+    const esAdminOBodega = userUpper.includes("ADMIN") || rolUpper.includes("ADMIN") || userUpper === "BODEGA";
+    const esFinanzas = userUpper.includes("FINANZAS") || rolUpper.includes("FINANZAS");
+    const esDT = userUpper.includes("DIRECTOR") || userUpper.includes("TECNICO") || userUpper === "DT" || rolUpper.includes("DT");
 
-        // Etapa 1 -> 2: Coordinador (o Admin) aprueba solicitud de Sucursal
-        if (s.estado === 'PENDIENTE_COORDINADOR' && (r === 'COORDINADOR' || r === 'ADMIN')) {
-          acciones = `
-            <button class="btn btn-warning btn-sm" onclick="cambiarEstadoSol(${s.id}, 'PENDIENTE_DT')">Aprobar (Coord.)</button>
-            <button class="btn btn-danger btn-sm" onclick="cambiarEstadoSol(${s.id}, 'RECHAZADA')">Rechazar</button>
-          `;
-        }
-        // Etapa 2 -> 3: Director Técnico (o Admin) da V°B°
-        else if (s.estado === 'PENDIENTE_DT' && (r === 'DT' || r === 'ADMIN')) {
-          acciones = `
-            <button class="btn btn-primary btn-sm" onclick="cambiarEstadoSol(${s.id}, 'APROBADA_DT')">V°B° Dir. Técnico</button>
-            <button class="btn btn-danger btn-sm" onclick="cambiarEstadoSol(${s.id}, 'RECHAZADA')">Rechazar</button>
-          `;
-        }
-        // Etapa 3 -> 4: Bodega (o Admin) despacha y descuenta stock
-        else if (s.estado === 'APROBADA_DT' && (r === 'BODEGA' || r === 'ADMIN')) {
-          acciones = `
-            <button class="btn btn-success btn-sm" onclick="despacharSolicitud(${s.id})">Despachar Bodega</button>
-          `;
-        }
+    const listaSucursales = data.sucursales
+      ? data.sucursales.split(",").map(s => s.trim()).filter(Boolean)
+      : (esAdminOBodega || esFinanzas ? SUCURSALES_CONOCIDAS : [USUARIO_LOGUEADO]);
 
-        return `
-          <tr>
-            <td>${fecha}</td>
-            <td>${s.sucursal}</td>
-            <td>${s.solicitante}</td>
-            <td>${s.codigo_producto} - ${s.descripcion}</td>
-            <td><strong>${s.cantidad}</strong></td>
-            <td>${badge}</td>
-            <td>${s.observacion || '-'}</td>
-            <td>${acciones}</td>
-          </tr>
-        `;
-      }).join('');
+    const selPedido = document.getElementById("pedidoSucursalOrigen");
+    const selMov = document.getElementById("sucursal");
+    const selRep = document.getElementById("reporteSucursalSelect");
+
+    [selPedido, selRep].forEach(sel => {
+      if (!sel) return;
+      sel.innerHTML = "";
+      listaSucursales.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+    });
+    if (selMov) {
+      selMov.innerHTML = '<option value="">Seleccione Destino...</option>';
+      const destinosMov = (esAdminOBodega || esFinanzas) ? SUCURSALES_CONOCIDAS : listaSucursales;
+      destinosMov.forEach(s => { selMov.innerHTML += `<option value="${s}">${s}</option>`; });
     }
 
-    async function crearSolicitud() {
-      const codigo = document.getElementById('solProd').value;
-      const cantidad = Number(document.getElementById('solCant').value);
-      const observacion = document.getElementById('solObs').value.trim();
+    const tabSub = document.getElementById("tab-subbodegas");
+    if (tabSub) tabSub.classList.toggle("d-none", !(esAdminOBodega || esFinanzas));
 
-      if (!codigo || !cantidad || cantidad <= 0) {
-        return alert('Selecciona un producto autorizado y una cantidad válida.');
-      }
+    const subDT = document.getElementById("subseccionPreAprobacionDT");
+    const subBod = document.getElementById("subseccionAdminPedidos");
+    if (subDT) subDT.classList.toggle("d-none", !esDT);
+    if (subBod) subBod.classList.toggle("d-none", !esAdminOBodega);
 
-      const prod = inventarioCache.find(p => p.codigo === codigo);
-      await sbFetch('solicitudes', {
-        method: 'POST',
-        body: JSON.stringify({
-          sucursal: currentUser.sucursal,
-          solicitante: currentUser.nombre,
-          codigo_producto: codigo,
-          descripcion: prod ? prod.descripcion : codigo,
-          cantidad,
-          estado: 'PENDIENTE_COORDINADOR',
-          observacion
-        })
-      });
-
-      document.getElementById('solCant').value = '';
-      document.getElementById('solObs').value = '';
-      await cargarSolicitudes();
-      alert('Solicitud enviada a Coordinación.');
+    if (esAdminOBodega) {
+      cambiarPestaña("panel-manual", document.getElementById("tab-manual"));
+    } else if (esDT) {
+      cambiarPestaña("panel-aprobaciones", document.getElementById("tab-aprobaciones"));
+    } else {
+      cambiarPestaña("panel-solicitud", document.getElementById("tab-solicitud"));
+      await actualizarCatalogoPorSucursalUTM();
     }
 
-    async function cambiarEstadoSol(id, nuevoEstado) {
-      await sbFetch(`solicitudes?id=eq.${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado: nuevoEstado })
-      });
-      await cargarSolicitudes();
+    mostrarNotificacion(`Sesión iniciada. Operador: ${USUARIO_LOGUEADO}`, "info");
+  }
+
+  function cambiarPestaña(id, btn) {
+    document.querySelectorAll(".tab-panel-content").forEach(p => {
+      p.classList.remove("active");
+      p.style.display = "none";
+    });
+    document.querySelectorAll(".nav-tabs-custom .nav-link").forEach(b => b.classList.remove("active"));
+
+    const panel = document.getElementById(id);
+    if (panel) {
+      panel.classList.add("active");
+      panel.style.display = "block";
     }
+    if (btn) btn.classList.add("active");
 
-    async function despacharSolicitud(id) {
-      const sol = solicitudesCache.find(s => s.id === id);
-      if (!sol) return;
-
-      const prod = inventarioCache.find(p => p.codigo === sol.codigo_producto);
-      if (!prod) return alert('Producto no encontrado en inventario.');
-      if (Number(prod.stock_actual) < Number(sol.cantidad)) {
-        return alert(`Stock insuficiente en bodega (${prod.stock_actual} disponibles).`);
-      }
-
-      const nuevoStock = Number(prod.stock_actual) - Number(sol.cantidad);
-
-      await sbFetch(`inventario?codigo=eq.${encodeURIComponent(prod.codigo)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ stock_actual: nuevoStock })
-      });
-
-      await sbFetch(`solicitudes?id=eq.${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado: 'DESPACHADA' })
-      });
-
-      await sbFetch('movimientos', {
-        method: 'POST',
-        body: JSON.stringify({
-          tipo: 'SALIDA',
-          codigo_producto: prod.codigo,
-          descripcion: prod.descripcion,
-          cantidad: sol.cantidad,
-          destino_motivo: `Despacho Solicitud #${sol.id} (${sol.sucursal})`,
-          responsable: currentUser.nombre
-        })
-      });
-
-      await cargarTodo();
-      alert('Pedido despachado y stock descontado de Bodega.');
-    }
-
-    async function registrarMovimiento() {
-      const tipo = document.getElementById('movTipo').value;
-      const codigo = document.getElementById('movProd').value;
-      const cantidad = Number(document.getElementById('movCant').value);
-      const destino_motivo = document.getElementById('movMotivo').value.trim();
-
-      if (!codigo || !cantidad || cantidad <= 0) return alert('Completa producto y cantidad.');
-
-      const prod = inventarioCache.find(p => p.codigo === codigo);
-      if (!prod) return;
-      if (Number(prod.stock_actual) < cantidad) return alert('Stock insuficiente.');
-
-      await sbFetch(`inventario?codigo=eq.${encodeURIComponent(codigo)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ stock_actual: Number(prod.stock_actual) - cantidad })
-      });
-
-      await sbFetch('movimientos', {
-        method: 'POST',
-        body: JSON.stringify({
-          tipo,
-          codigo_producto: codigo,
-          descripcion: prod.descripcion,
-          cantidad,
-          destino_motivo,
-          responsable: currentUser.nombre
-        })
-      });
-
-      document.getElementById('movCant').value = '';
-      document.getElementById('movMotivo').value = '';
-      await cargarTodo();
-      alert('Movimiento registrado.');
-    }
-
-    async function cargarMovimientos() {
-      const movs = await sbFetch('movimientos?select=*&order=id.desc');
-      document.getElementById('tablaMovimientos').innerHTML = movs.map(m => {
-        const fecha = new Date(m.fecha).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
-        return `
-          <tr>
-            <td>${fecha}</td>
-            <td><strong>${m.tipo}</strong></td>
-            <td>${m.codigo_producto} - ${m.descripcion}</td>
-            <td>${m.cantidad}</td>
-            <td>${m.destino_motivo || '-'}</td>
-            <td>${m.responsable}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function toggleListaInsumos() {
-      const modo = document.getElementById('usrModoInsumos').value;
-      document.getElementById('contenedorCheckInsumos').classList.toggle('hidden', modo === 'TODOS');
-    }
-
-    async function cargarUsuarios() {
-      usuariosCache = await sbFetch('personal?select=*&order=id.asc');
-      document.getElementById('tablaUsuarios').innerHTML = usuariosCache.map(u => `
-        <tr>
-          <td><strong>${u.usuario}</strong></td>
-          <td>${u.nombre}</td>
-          <td>${u.rol}</td>
-          <td>${u.sucursal}</td>
-          <td>${u.insumos_permitidos || 'TODOS'}</td>
-          <td><button class="btn btn-primary btn-sm" onclick="editarUsuario('${u.usuario}')">Editar</button></td>
-        </tr>
-      `).join('');
-    }
-
-    function editarUsuario(usuarioLogin) {
-      const u = usuariosCache.find(x => x.usuario === usuarioLogin);
-      if (!u) return;
-      document.getElementById('usrUser').value = u.usuario;
-      document.getElementById('usrPass').value = u.password;
-      document.getElementById('usrNombre').value = u.nombre;
-      document.getElementById('usrRol').value = u.rol;
-      document.getElementById('usrSucursal').value = u.sucursal;
-
-      const perm = (u.insumos_permitidos || 'TODOS').trim();
-      if (perm === 'TODOS') {
-        document.getElementById('usrModoInsumos').value = 'TODOS';
-        toggleListaInsumos();
+    if (id === "panel-manual") alternarCamposDinamicos();
+    if (id === "panel-aprobaciones") {
+      if (USUARIO_LOGUEADO.toUpperCase().includes("ADMIN") || ROL_LOGUEADO.toUpperCase().includes("ADMIN")) {
+        cargarPedidosPendientesAdmin();
       } else {
-        document.getElementById('usrModoInsumos').value = 'ESPECIFICOS';
-        toggleListaInsumos();
-        const cods = perm.split(',').map(x => x.trim());
-        document.querySelectorAll('.chk-insumo').forEach(chk => {
-          chk.checked = cods.includes(chk.value);
+        cargarPedidosPreAprobacionDT();
+      }
+    }
+    if (id === "panel-monitor") recargarTablaMonitor();
+    if (id === "panel-mermas") recargarTablaMermas();
+    if (id === "panel-subbodegas") recargarTablaSubbodegas();
+  }
+
+  function alternarCamposDinamicos() {
+    const tipo = document.getElementById("tipoMovimiento").value;
+    document.getElementById("bloqueProveedor").classList.toggle("d-none", tipo !== "INGRESO");
+    document.getElementById("bloqueFactura").classList.toggle("d-none", tipo !== "INGRESO");
+    document.getElementById("bloqueSucursal").classList.toggle("d-none", !["SALIDA", "MERMA"].includes(tipo));
+    document.getElementById("bloqueBodegaOrigen").classList.toggle("d-none", !["INGRESO", "SALIDA", "AJUSTE"].includes(tipo));
+    validarStockDisponible();
+  }
+
+  function obtenerOptionInsumoSeleccionado() {
+    const val = document.getElementById("txtInputInsumo").value.trim();
+    if (!val) return null;
+    const opts = document.getElementById("listaInsumosDinamica").options;
+    for (let i = 0; i < opts.length; i++) {
+      if (opts[i].value === val || opts[i].dataset.id === val) return opts[i];
+    }
+    return null;
+  }
+
+  function mostrarMetadataInsumo() {
+    const box = document.getElementById("boxMetadata");
+    const opt = obtenerOptionInsumoSeleccionado();
+    if (!opt) {
+      box.classList.add("d-none");
+      return;
+    }
+    box.classList.remove("d-none");
+    box.innerHTML = `<strong>Nombre:</strong> ${opt.dataset.nombre} | <strong>Stock:</strong> ${opt.dataset.stock} | <strong>U.M.:</strong> ${opt.dataset.um} | <strong>Estado:</strong> ${opt.dataset.estado}`;
+    validarStockDisponible();
+  }
+
+  function validarStockDisponible() {
+    const tipo = document.getElementById("tipoMovimiento").value;
+    const opt = obtenerOptionInsumoSeleccionado();
+    const cant = parseFloat(document.getElementById("cantidad").value) || 0;
+    const alerta = document.getElementById("alertaStockInsuficiente");
+    if ((tipo === "SALIDA" || tipo === "MERMA") && opt && cant > (parseFloat(opt.dataset.stock) || 0)) {
+      alerta.classList.remove("d-none");
+    } else {
+      alerta.classList.add("d-none");
+    }
+  }
+
+  function agregarInsumoAlLoteManual() {
+    const opt = obtenerOptionInsumoSeleccionado();
+    const cantInput = document.getElementById("cantidad");
+    const vencInput = document.getElementById("vencimientoIndividual");
+    const cantidad = parseFloat(cantInput.value) || 0;
+    if (!opt || cantidad <= 0) {
+      mostrarNotificacion("Seleccione un insumo válido y una cantidad mayor a 0.", "error");
+      return;
+    }
+    if (!document.getElementById("alertaStockInsuficiente").classList.contains("d-none")) {
+      mostrarNotificacion("La cantidad supera el stock disponible.", "error");
+      return;
+    }
+    LOTE_MANUAL_ITEMS.push({
+      idInsumo: opt.dataset.id,
+      name: opt.dataset.nombre,
+      categoria: opt.dataset.categoria || "General",
+      um: opt.dataset.um || "UN",
+      cantidad,
+      fechaVenc: vencInput.value || "S/V"
+    });
+    document.getElementById("txtInputInsumo").value = "";
+    cantInput.value = "1";
+    vencInput.value = "";
+    document.getElementById("boxMetadata").classList.add("d-none");
+    renderizarTablaLoteManual();
+  }
+
+  function eliminarItemLoteManual(idx) {
+    LOTE_MANUAL_ITEMS.splice(idx, 1);
+    renderizarTablaLoteManual();
+  }
+
+  function renderizarTablaLoteManual() {
+    const tbody = document.getElementById("tbodyLoteManual");
+    const btn = document.getElementById("btnGuardarLoteManual");
+    if (!LOTE_MANUAL_ITEMS.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No has agregado ningún elemento a este lote.</td></tr>';
+      btn.disabled = true;
+      return;
+    }
+    tbody.innerHTML = LOTE_MANUAL_ITEMS.map((item, idx) => `
+      <tr>
+        <td><span class="badge bg-dark">${item.idInsumo}</span></td>
+        <td><strong>${item.name}</strong></td>
+        <td class="text-center text-primary fw-bold">${item.cantidad}</td>
+        <td class="text-center"><span class="badge bg-warning text-dark">${item.fechaVenc}</span></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="eliminarItemLoteManual(${idx})">❌</button></td>
+      </tr>
+    `).join("");
+    btn.disabled = false;
+  }
+
+  async function procesarLoteManualCompleto() {
+    if (!LOTE_MANUAL_ITEMS.length) return;
+    const btn = document.getElementById("btnGuardarLoteManual");
+    btn.disabled = true;
+    btn.innerHTML = "⌛ Guardando lote...";
+
+    const tipo = document.getElementById("tipoMovimiento").value;
+    const bodega = document.getElementById("bodegaOrigen").value || "BULNES";
+    const destino = tipo === "INGRESO" ? document.getElementById("proveedor").value : document.getElementById("sucursal").value;
+    const notas = document.getElementById("notas").value.trim();
+
+    const { data: ultimos } = await db
+      .from("historial")
+      .select("correlativo")
+      .eq("tipo", tipo)
+      .order("correlativo", { ascending: false })
+      .limit(1);
+
+    const correlativo = (ultimos && ultimos.length ? Number(ultimos[0].correlativo) || 0 : 0) + 1;
+
+    for (const item of LOTE_MANUAL_ITEMS) {
+      const { data: actual } = await db
+        .from("inventario_actual")
+        .select("stock, stock_bulnes, stock_peninsula")
+        .eq("id", item.idInsumo)
+        .maybeSingle();
+
+      let bulnes = actual ? Number(actual.stock_bulnes) || 0 : 0;
+      let peninsula = actual ? Number(actual.stock_peninsula) || 0 : 0;
+
+      if (tipo === "SALIDA" || tipo === "MERMA") {
+        if (bodega === "PENINSULA") peninsula = Math.max(0, peninsula - item.cantidad);
+        else bulnes = Math.max(0, bulnes - item.cantidad);
+      } else if (tipo === "INGRESO") {
+        if (bodega === "PENINSULA") peninsula += item.cantidad;
+        else bulnes += item.cantidad;
+      } else if (tipo === "AJUSTE") {
+        if (bodega === "PENINSULA") peninsula = item.cantidad;
+        else bulnes = item.cantidad;
+      }
+
+      const nuevoStock = bulnes + peninsula;
+      await db.from("inventario_actual").update({
+        stock: nuevoStock,
+        stock_bulnes: bulnes,
+        stock_peninsula: peninsula
+      }).eq("id", item.idInsumo);
+
+      await db.from("historial").insert({
+        operador: USUARIO_LOGUEADO,
+        tipo,
+        destino_origen: destino,
+        referencia_nota: notas,
+        id_insumo: item.idInsumo,
+        descripcion: item.name,
+        cantidad: item.cantidad,
+        fecha_vencimiento: item.fechaVenc,
+        correlativo,
+        notas,
+        bodega_origen: bodega
+      });
+    }
+
+    if (tipo === "SALIDA") {
+      const filasHtml = LOTE_MANUAL_ITEMS.map(it =>
+        `<tr><td>${it.categoria}</td><td>${it.idInsumo}</td><td>${it.name}</td><td>${it.um}</td><td>${it.cantidad}</td><td>${it.fechaVenc}</td><td>${notas}</td></tr>`
+      ).join("");
+      imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, `
+        <h3>COMPROBANTE DE SALIDA N° ${correlativo}</h3>
+        <p><strong>Destino:</strong> ${destino} | <strong>Bodega:</strong> ${bodega}</p>
+        <table><thead><tr><th>Categoría</th><th>Código</th><th>Descripción</th><th>U.M.</th><th>Cantidad</th><th>Venc.</th><th>Obs.</th></tr></thead><tbody>${filasHtml}</tbody></table>
+      `);
+    }
+
+    LOTE_MANUAL_ITEMS = [];
+    renderizarTablaLoteManual();
+    document.getElementById("notas").value = "";
+    document.getElementById("factura").value = "";
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial';
+    await cargarCatalogosIniciales();
+    mostrarNotificacion(`¡Éxito! Lote registrado bajo el Comprobante N° ${correlativo}`);
+  }
+
+  async function recargarTablaMonitor() {
+    await cargarCatalogosIniciales();
+    filtrarMonitorSaldos();
+  }
+
+  function filtrarMonitorSaldos() {
+    const q = document.getElementById("txtBuscarMonitor").value.toLowerCase().trim();
+    const lista = q
+      ? INSUMOS_MONITOR_CACHE.filter(i =>
+          (i.id && i.id.toLowerCase().includes(q)) ||
+          (i.nombre && i.nombre.toLowerCase().includes(q)) ||
+          (i.categoria && i.categoria.toLowerCase().includes(q)))
+      : INSUMOS_MONITOR_CACHE;
+
+    const tbody = document.getElementById("tbodyMonitor");
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">No se encontraron registros.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(item => {
+      const badgeStock = item.stock <= 0 ? "bg-danger" : (item.estado && item.estado.includes("CRÍTICO") ? "bg-warning text-dark" : "bg-success");
+      const alerta = item.stock < item.proyeccionTrimestral
+        ? "<span class='badge bg-danger'>Insuficiente</span>"
+        : "<span class='badge bg-success'>Cubierto</span>";
+      return `<tr>
+        <td><span class="badge bg-secondary">${item.id}</span></td>
+        <td><strong>${item.nombre}</strong></td>
+        <td>${item.categoria}</td>
+        <td>${item.um}</td>
+        <td class="text-center"><span class="badge badge-stock-size ${badgeStock}">${item.stock}</span></td>
+        <td class="text-end fw-bold text-success">${formatMonto(item.totalValor)}</td>
+        <td class="text-center"><small class="fw-semibold">${item.estado}</small></td>
+        <td class="text-center">${item.proyeccionTrimestral}</td>
+        <td class="text-center">${item.proyeccionAnual}</td>
+        <td class="text-center">${alerta}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function recargarTablaSubbodegas() {
+    await cargarCatalogosIniciales();
+    filtrarSubbodegas();
+  }
+
+  function filtrarSubbodegas() {
+    const q = document.getElementById("txtBuscarSubbodegas").value.toLowerCase().trim();
+    const lista = q
+      ? INSUMOS_MONITOR_CACHE.filter(i => i.id.toLowerCase().includes(q) || i.nombre.toLowerCase().includes(q))
+      : INSUMOS_MONITOR_CACHE;
+
+    const tbody = document.getElementById("tbodySubbodegas");
+    tbody.innerHTML = lista.map(item => `
+      <tr>
+        <td><span class="badge bg-dark">${item.id}</span></td>
+        <td><strong>${item.nombre}</strong></td>
+        <td class="text-center"><span class="badge ${item.stock <= 0 ? "bg-danger" : "bg-success"} fs-6">${item.stock}</span></td>
+        <td class="text-center"><span class="badge ${item.stockBulnes <= 0 ? "bg-secondary" : "bg-primary"} fs-6">${item.stockBulnes}</span></td>
+        <td class="text-center"><span class="badge ${item.stockPeninsula <= 0 ? "bg-secondary" : "bg-warning text-dark"} fs-6">${item.stockPeninsula}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  async function recargarTablaMermas() {
+    await cargarCatalogosIniciales();
+    const precios = {};
+    INSUMOS_MONITOR_CACHE.forEach(i => { precios[i.id] = i.precioUnitario || 0; });
+
+    const { data: movs } = await db.from("historial").select("*").eq("tipo", "MERMA");
+    const agrupado = {};
+    (movs || []).forEach(m => {
+      if (!agrupado[m.id_insumo]) {
+        agrupado[m.id_insumo] = { id: m.id_insumo, nombre: m.descripcion, um: "UN", cantidad: 0, valorTotal: 0 };
+      }
+      agrupado[m.id_insumo].cantidad += Number(m.cantidad) || 0;
+    });
+
+    const lista = Object.values(agrupado).map(x => {
+      x.valorTotal = x.cantidad * (precios[x.id] || 0);
+      return x;
+    });
+
+    const tbody = document.getElementById("tbodyMermas");
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No se han registrado mermas.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(m => `
+      <tr>
+        <td><span class="badge bg-danger">${m.id}</span></td>
+        <td><strong>${m.nombre}</strong></td>
+        <td class="text-center">${m.um}</td>
+        <td class="text-center fw-bold">${m.cantidad}</td>
+        <td class="text-end fw-bold text-danger">${formatMonto(m.valorTotal)}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function abrirModalGraficoMermas() {
+    const modal = new bootstrap.Modal(document.getElementById("modalGraficoMermas"));
+    modal.show();
+    const { data: movs } = await db.from("historial").select("*").eq("tipo", "MERMA");
+    const precios = {};
+    INSUMOS_MONITOR_CACHE.forEach(i => { precios[i.id] = i.precioUnitario || 0; });
+
+    const porMes = {};
+    (movs || []).forEach(m => {
+      const f = new Date(m.created_at);
+      if (isNaN(f.getTime())) return;
+      const clave = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}`;
+      porMes[clave] = (porMes[clave] || 0) + (Number(m.cantidad) || 0) * (precios[m.id_insumo] || 0);
+    });
+
+    const dt = new google.visualization.DataTable();
+    dt.addColumn("string", "Mes");
+    dt.addColumn("number", "Pérdida ($)");
+    Object.keys(porMes).sort().forEach(k => dt.addRow([k, Math.round(porMes[k])]));
+    new google.visualization.ColumnChart(document.getElementById("mermasChartContainer")).draw(dt, { height: 380 });
+  }
+
+  async function actualizarCatalogoPorSucursalUTM() {
+    const suc = document.getElementById("pedidoSucursalOrigen").value;
+    SESION_ES_UTM = suc.toUpperCase().startsWith("UTM");
+    const tbody = document.getElementById("tbodyCarroPedido");
+    tbody.innerHTML = INSUMOS_MONITOR_CACHE.map(ins => `
+      <tr>
+        <td><span class="badge bg-secondary">${ins.id}</span></td>
+        <td><strong>${ins.nombre}</strong></td>
+        <td class="text-center">${ins.um}</td>
+        <td class="text-center fw-bold">${ins.stock}</td>
+        <td>
+          <input type="number" min="0" value="0" class="form-control form-control-sm cantidad-solicitar text-center mx-auto"
+                 style="max-width:110px;" data-id="${ins.id}" data-nombre="${ins.nombre}" data-um="${ins.um}">
+        </td>
+        <td><input type="text" class="form-control form-control-sm observacion-solicitar" id="obs_${ins.id}" placeholder="Observaciones..."></td>
+      </tr>
+    `).join("");
+  }
+
+  async function enviarPedidoFijoAlServidor() {
+    const suc = document.getElementById("pedidoSucursalOrigen").value;
+    const notas = document.getElementById("pedidoNotas").value.trim();
+    const items = [];
+    document.querySelectorAll(".cantidad-solicitar").forEach(inp => {
+      const cant = parseFloat(inp.value) || 0;
+      if (cant > 0) {
+        const id = inp.dataset.id;
+        items.push({
+          id_insumo: id,
+          descripcion: inp.dataset.nombre,
+          um: inp.dataset.um || "UN",
+          cantidad: cant,
+          observacion: (document.getElementById("obs_" + id)?.value || "").trim()
         });
       }
+    });
+    if (!items.length) {
+      mostrarNotificacion("Ingrese una cantidad mayor a 0 en al menos un insumo.", "error");
+      return;
     }
 
-    async function guardarUsuario() {
-      const usuario = document.getElementById('usrUser').value.trim();
-      const password = document.getElementById('usrPass').value.trim();
-      const nombre = document.getElementById('usrNombre').value.trim();
-      const rol = document.getElementById('usrRol').value;
-      const sucursal = document.getElementById('usrSucursal').value.trim().toUpperCase();
-      const modo = document.getElementById('usrModoInsumos').value;
+    const { data: ult } = await db.from("pedidos").select("folio").order("folio", { ascending: false }).limit(1);
+    const folio = (ult && ult.length ? Number(ult[0].folio) || 0 : 0) + 1;
 
-      if (!usuario || !password || !nombre || !sucursal) {
-        return alert('Completa todos los datos del usuario.');
+    const filas = items.map(it => ({
+      folio,
+      solicitante: USUARIO_LOGUEADO,
+      sucursal: suc,
+      id_insumo: it.id_insumo,
+      descripcion: it.descripcion,
+      um: it.um,
+      cantidad: it.cantidad,
+      estado: "PRE-APROBACION",
+      notas,
+      observacion: it.observacion
+    }));
+
+    const { error } = await db.from("pedidos").insert(filas);
+    if (error) {
+      mostrarNotificacion("Error al enviar pedido: " + error.message, "error");
+      return;
+    }
+    document.querySelectorAll(".cantidad-solicitar").forEach(i => i.value = "0");
+    document.querySelectorAll(".observacion-solicitar").forEach(o => o.value = "");
+    document.getElementById("pedidoNotas").value = "";
+    mostrarNotificacion(`¡Solicitud de Pedido N° ${folio} enviada con éxito!`);
+  }
+
+  async function cargarPedidosPreAprobacionDT() {
+    const { data } = await db.from("pedidos").select("*").eq("estado", "PRE-APROBACION").order("id", { ascending: true });
+    const tbody = document.getElementById("tbodyPreAprobacionDT");
+    if (!data || !data.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No hay solicitudes esperando pre-aprobación.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(p => `
+      <tr>
+        <td class="text-center"><input type="checkbox" class="check-dt-item" data-id="${p.id}" onchange="actualizarContadorDT()"></td>
+        <td><small>${new Date(p.created_at).toLocaleString("es-CL")}</small></td>
+        <td><strong>${p.solicitante}</strong></td>
+        <td><span class="badge bg-secondary">${p.sucursal}</span></td>
+        <td><span class="badge bg-dark">${p.id_insumo}</span></td>
+        <td><strong>${p.descripcion}</strong></td>
+        <td class="text-center fw-bold">${p.um}</td>
+        <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm text-center input-dt-cantidad mx-auto" style="max-width:90px;" value="${p.cantidad}"></td>
+        <td><small>${p.observacion || ""}</small></td>
+      </tr>
+    `).join("");
+    actualizarContadorDT();
+  }
+
+  function seleccionarTodosDT(m) {
+    document.querySelectorAll(".check-dt-item").forEach(c => c.checked = m.checked);
+    actualizarContadorDT();
+  }
+
+  function actualizarContadorDT() {
+    document.getElementById("lblContadorDT").innerText = document.querySelectorAll(".check-dt-item:checked").length;
+  }
+
+  async function ejecutarLiberacionMasivaDT() {
+    const checks = document.querySelectorAll(".check-dt-item:checked");
+    if (!checks.length) {
+      mostrarNotificacion("Selecciona al menos una solicitud.", "info");
+      return;
+    }
+    for (const c of checks) {
+      const id = Number(c.dataset.id);
+      const cant = parseFloat(c.closest("tr").querySelector(".input-dt-cantidad").value) || 0;
+      if (id > 0 && cant > 0) {
+        await db.from("pedidos").update({ estado: "APROBADO_DT", cantidad: cant }).eq("id", id);
       }
+    }
+    mostrarNotificacion(`Se liberaron ${checks.length} ítems hacia Bodega.`);
+    cargarPedidosPreAprobacionDT();
+  }
 
-      let insumos_permitidos = 'TODOS';
-      if (modo === 'ESPECIFICOS') {
-        const seleccionados = Array.from(document.querySelectorAll('.chk-insumo:checked')).map(c => c.value);
-        if (seleccionados.length === 0) return alert('Marca al menos un insumo permitido para este usuario.');
-        insumos_permitidos = seleccionados.join(',');
-      }
+  async function cargarPedidosPendientesAdmin() {
+    await cargarCatalogosIniciales();
+    const stockMap = {};
+    INSUMOS_MONITOR_CACHE.forEach(i => stockMap[i.id] = i.stock);
 
-      await sbFetch('personal?on_conflict=usuario', {
-        method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ usuario, password, nombre, rol, sucursal, insumos_permitidos })
+    const { data } = await db.from("pedidos").select("*").in("estado", ["APROBADO_DT", "APROBADO", "PENDIENTE"]).order("id", { ascending: true });
+    PEDIDOS_CARGADOS_CACHE = (data || []).map(p => ({
+      ...p,
+      stockDisponible: stockMap[p.id_insumo] ?? 0
+    }));
+
+    const tbody = document.getElementById("tbodyAdminPedidos");
+    if (!PEDIDOS_CARGADOS_CACHE.length) {
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">No hay solicitudes pendientes.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = PEDIDOS_CARGADOS_CACHE.map((p, idx) => {
+      const sinStock = p.stockDisponible < p.cantidad;
+      const checkHtml = sinStock
+        ? `<i class="bi bi-x-circle-fill text-danger"></i>`
+        : `<input type="checkbox" class="check-pedido-item" data-index="${idx}" onchange="actualizarContadorSeleccionados()">`;
+      return `<tr>
+        <td class="text-center" id="celda_check_${idx}">${checkHtml}</td>
+        <td><small>${new Date(p.created_at).toLocaleString("es-CL")}</small></td>
+        <td><strong>${p.solicitante}</strong></td>
+        <td><span class="badge bg-secondary">${p.sucursal}</span></td>
+        <td><span class="badge bg-dark">${p.id_insumo}</span></td>
+        <td><strong>${p.descripcion}</strong></td>
+        <td class="text-center fw-bold">${p.um}</td>
+        <td class="text-center"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-center fw-bold mx-auto" style="max-width:90px;" id="admin_cant_${idx}" value="${p.cantidad}" oninput="validarCantidadDespachoDinamica(${idx})"></td>
+        <td class="text-center"><span class="badge ${sinStock ? "bg-danger" : "bg-success"}">${p.stockDisponible}</span></td>
+        <td><input type="date" class="form-control form-control-sm" id="admin_venc_${idx}"></td>
+        <td><input type="text" class="form-control form-control-sm" id="admin_obs_${idx}" value="${p.observacion || ""}"></td>
+      </tr>`;
+    }).join("");
+    actualizarContadorSeleccionados();
+  }
+
+  function validarCantidadDespachoDinamica(idx) {
+    const p = PEDIDOS_CARGADOS_CACHE[idx];
+    const cant = parseFloat(document.getElementById("admin_cant_" + idx)?.value) || 0;
+    const celda = document.getElementById("celda_check_" + idx);
+    if (!p || !celda) return;
+    celda.innerHTML = (cant > 0 && cant <= p.stockDisponible)
+      ? `<input type="checkbox" class="check-pedido-item" data-index="${idx}" onchange="actualizarContadorSeleccionados()">`
+      : `<i class="bi bi-x-circle-fill text-danger"></i>`;
+    actualizarContadorSeleccionados();
+  }
+
+  function seleccionarTodosLosPedidos(m) {
+    document.querySelectorAll(".check-pedido-item").forEach(c => c.checked = m.checked);
+    actualizarContadorSeleccionados();
+  }
+
+  function actualizarContadorSeleccionados() {
+    const n = document.querySelectorAll(".check-pedido-item:checked").length;
+    document.getElementById("lblContadorSeleccionados").innerText = n;
+    document.getElementById("btnDespachoGlobal").disabled = n === 0;
+  }
+
+  async function procesarDespachoMasivoGlobal() {
+    const checks = document.querySelectorAll(".check-pedido-item:checked");
+    if (!checks.length) return;
+
+    const { data: ult } = await db.from("historial").select("correlativo").eq("tipo", "SALIDA").order("correlativo", { ascending: false }).limit(1);
+    const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
+
+    const filasPdf = [];
+    for (const cb of checks) {
+      const idx = Number(cb.dataset.index);
+      const p = PEDIDOS_CARGADOS_CACHE[idx];
+      const cantFinal = parseFloat(document.getElementById("admin_cant_" + idx).value) || 0;
+      const venc = document.getElementById("admin_venc_" + idx).value || "S/V";
+      const obs = (document.getElementById("admin_obs_" + idx).value || "").trim();
+
+      await db.from("historial").insert({
+        operador: USUARIO_LOGUEADO,
+        tipo: "SALIDA",
+        destino_origen: p.sucursal,
+        referencia_nota: `Solicitud N° ${p.folio}`,
+        id_insumo: p.id_insumo,
+        descripcion: p.descripcion,
+        cantidad: cantFinal,
+        fecha_vencimiento: venc,
+        correlativo,
+        notas: obs,
+        bodega_origen: "BULNES"
       });
 
-      document.getElementById('usrUser').value = '';
-      document.getElementById('usrPass').value = '';
-      document.getElementById('usrNombre').value = '';
-      document.getElementById('usrSucursal').value = '';
-      await cargarUsuarios();
-      alert('Usuario e insumos autorizados guardados.');
+      const nuevoStock = Math.max(0, Number(p.stockDisponible) - cantFinal);
+      await db.from("inventario_actual").update({ stock: nuevoStock }).eq("id", p.id_insumo);
+      await db.from("pedidos").update({ estado: "DESPACHADO" }).eq("id", p.id);
+
+      filasPdf.push(`<tr><td>${p.id_insumo}</td><td>${p.descripcion}</td><td>${p.um}</td><td>${cantFinal}</td><td>${venc}</td><td>${obs}</td></tr>`);
     }
-  </script>
+
+    imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, `
+      <h3>COMPROBANTE DE SALIDA N° ${correlativo}</h3>
+      <table><thead><tr><th>Código</th><th>Descripción</th><th>U.M.</th><th>Cantidad</th><th>Venc.</th><th>Obs.</th></tr></thead><tbody>${filasPdf.join("")}</tbody></table>
+    `);
+
+    mostrarNotificacion(`Se despacharon ${checks.length} ítems bajo Salida N° ${correlativo}.`);
+    cargarPedidosPendientesAdmin();
+    recargarTablaMonitor();
+  }
+
+  async function consultarReporteMensualBackend() {
+    const sucursal = document.getElementById("reporteSucursalSelect").value;
+    const mes = parseInt(document.getElementById("reporteMesSelect").value, 10);
+    const anio = parseInt(document.getElementById("reporteAnioInput").value, 10);
+
+    const inicio = new Date(anio, mes - 2, 20, 0, 0, 0).toISOString();
+    const fin = new Date(anio, mes - 1, 5, 23, 59, 59).toISOString();
+
+    const { data: pedidos } = await db
+      .from("pedidos")
+      .select("*")
+      .eq("sucursal", sucursal)
+      .gte("created_at", inicio)
+      .lte("created_at", fin);
+
+    const { data: salidas } = await db
+      .from("historial")
+      .select("*")
+      .eq("tipo", "SALIDA")
+      .eq("destino_origen", sucursal)
+      .gte("created_at", inicio)
+      .lte("created_at", fin);
+
+    const cons = {};
+    (pedidos || []).forEach(p => {
+      if (!cons[p.id_insumo]) {
+        cons[p.id_insumo] = { codigo: p.id_insumo, insumo: p.descripcion, um: p.um || "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
+      }
+      cons[p.id_insumo].cantPedido += Number(p.cantidad) || 0;
+      if (p.folio) cons[p.id_insumo].sols.add(String(p.folio));
+    });
+
+    (salidas || []).forEach(s => {
+      if (!cons[s.id_insumo]) {
+        cons[s.id_insumo] = { codigo: s.id_insumo, insumo: s.descripcion, um: "UN", cantPedido: 0, cantDespachada: 0, sols: new Set(), sals: new Set() };
+      }
+      cons[s.id_insumo].cantDespachada += Number(s.cantidad) || 0;
+      if (s.correlativo) cons[s.id_insumo].sals.add(String(s.correlativo));
+    });
+
+    const filas = Object.values(cons).map(x => ({
+      ...x,
+      solicitudesTexto: x.sols.size ? Array.from(x.sols).join(", ") : "S/N",
+      salidasTexto: x.sals.size ? Array.from(x.sals).join(", ") : "S/N"
+    }));
+
+    ULTIMO_REPORTE_MENSUAL = { sucursal, mes, anio, filas };
+    document.getElementById("lblSucursalReporte").innerText = sucursal;
+    document.getElementById("lblMesAnioReporte").innerText = `${mes} / ${anio}`;
+    document.getElementById("btnDescargarPdfReporte").disabled = filas.length === 0;
+
+    const tbody = document.getElementById("tbodyReporteMensual");
+    if (!filas.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron movimientos en el ciclo seleccionado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filas.map(item => `
+      <tr>
+        <td><strong>${item.insumo}</strong> <small class="text-muted">(${item.codigo})</small></td>
+        <td class="text-center">${item.um}</td>
+        <td class="text-center fw-bold text-primary">${item.cantPedido}</td>
+        <td class="text-center"><span class="badge bg-secondary">${item.solicitudesTexto}</span></td>
+        <td class="text-center fw-bold text-success">${item.cantDespachada}</td>
+        <td class="text-center"><span class="badge bg-dark">${item.salidasTexto}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  function descargarPdfReporteMensual() {
+    if (!ULTIMO_REPORTE_MENSUAL) return;
+    const { sucursal, mes, anio, filas } = ULTIMO_REPORTE_MENSUAL;
+    const rows = filas.map(f =>
+      `<tr><td>${f.insumo} (${f.codigo})</td><td>${f.um}</td><td>${f.cantPedido}</td><td>${f.solicitudesTexto}</td><td>${f.cantDespachada}</td><td>${f.salidasTexto}</td></tr>`
+    ).join("");
+    imprimirHtmlEnVentana(`Reporte_${sucursal}_${mes}_${anio}`, `
+      <h3>REPORTE MENSUAL (${mes}/${anio})</h3>
+      <p><strong>Sucursal:</strong> ${sucursal}</p>
+      <table><thead><tr><th>Insumo</th><th>U.M.</th><th>Cant. Pedido</th><th>N° Solicitud</th><th>Cant. Despachada</th><th>N° Salida</th></tr></thead><tbody>${rows}</tbody></table>
+    `);
+  }
+
+  function procesarArchivoCSV() {
+    const fileInput = document.getElementById("archivoCSV");
+    if (!fileInput.files.length) {
+      mostrarNotificacion("Seleccione un archivo .CSV primero.", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const lineas = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      let insertados = 0;
+      for (let i = 0; i < lineas.length; i++) {
+        const cols = lineas[i].split(",").map(c => c.trim());
+        if (cols.length < 4 || cols[0].toUpperCase() === "TIPO") continue;
+        const tipo = cols[0].toUpperCase();
+        const destino = cols[1] || "";
+        const idInsumo = cols[2];
+        const cant = parseFloat(cols[3]) || 0;
+        const venc = cols[4] || "S/V";
+        const bodega = (cols[5] || "BULNES").toUpperCase();
+        const nota = cols[6] || "";
+        const ins = INSUMOS_MONITOR_CACHE.find(x => x.id === idInsumo);
+        if (!idInsumo || cant <= 0) continue;
+
+        await db.from("historial").insert({
+          operador: USUARIO_LOGUEADO,
+          tipo,
+          destino_origen: destino,
+          referencia_nota: nota,
+          id_insumo: idInsumo,
+          descripcion: ins ? ins.nombre : idInsumo,
+          cantidad: cant,
+          fecha_vencimiento: venc,
+          correlativo: i + 1,
+          notas: nota,
+          bodega_origen: bodega
+        });
+        insertados++;
+      }
+      mostrarNotificacion(`Importación CSV completada: ${insertados} filas registradas.`);
+    };
+    reader.readAsText(fileInput.files[0]);
+  }
+
+  function cerrarSesion() {
+    USUARIO_LOGUEADO = "";
+    ROL_LOGUEADO = "";
+    LOTE_MANUAL_ITEMS = [];
+    PEDIDOS_CARGADOS_CACHE = [];
+    document.getElementById("seccionApp").classList.add("d-none");
+    document.getElementById("seccionLogin").classList.remove("d-none");
+    document.getElementById("loginUsuario").value = "";
+    document.getElementById("loginClave").value = "";
+  }
+</script>
 </body>
 </html>
