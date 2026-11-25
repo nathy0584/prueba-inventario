@@ -92,7 +92,7 @@ function cerrarSesion() {
 // CARGA CENTRAL DE DATOS
 async function cargarTodo() {
   const [invRes, solRes, movRes, perRes] = await Promise.all([
-    db.from('inventario_actual').select('*').order('nombre', { ascending: true }),
+    db.from('Inventario_Actual').select('*').order('nombre', { ascending: true }),
     db.from('pedidos').select('*').order('created_at', { ascending: false }),
     db.from('historial').select('*').order('created_at', { ascending: false }),
     db.from('personal').select('*').order('usuario', { ascending: true })
@@ -252,7 +252,7 @@ async function despacharSolicitud(id) {
   const { data: ult } = await db.from('historial').select('correlativo').eq('tipo', 'SALIDA').order('correlativo', { ascending: false }).limit(1);
   const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
 
-  await db.from('inventario_actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
+  await db.from('Inventario_Actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
   await db.from('pedidos').update({ estado: 'DESPACHADO' }).eq('id', id);
   await db.from('historial').insert([{
     tipo: 'SALIDA',
@@ -281,7 +281,7 @@ document.getElementById('form-producto').addEventListener('submit', async (e) =>
     proyeccion_trimestral: Number(document.getElementById('inv-min').value)
   };
 
-  const { error } = await db.from('inventario_actual').upsert([payload]);
+  const { error } = await db.from('Inventario_Actual').upsert([payload]);
   if (error) return mostrarMensaje('Error al guardar producto: ' + error.message, 'error');
 
   document.getElementById('form-producto').reset();
@@ -326,7 +326,7 @@ document.getElementById('form-movimiento').addEventListener('submit', async (e) 
   const { data: ult } = await db.from('historial').select('correlativo').eq('tipo', tipo).order('correlativo', { ascending: false }).limit(1);
   const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
 
-  await db.from('inventario_actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
+  await db.from('Inventario_Actual').update({ stock: nuevoStock }).eq('id', prod.codigo);
   await db.from('historial').insert([{
     tipo,
     id_insumo: prod.codigo,
