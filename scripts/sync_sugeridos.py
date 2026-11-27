@@ -7,7 +7,7 @@ ONEDRIVE_SHARE_URL = os.environ["ONEDRIVE_SHARE_URL"].strip()
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
 PERIODO = os.environ["PERIODO"].strip()
-RUTA_EXCEL = "/tmp/consolidado_onedrive.xlsx"
+RUTA_EXCEL = "Planilla de Consolidado UTM Solicitud insumos mensual.xlsx"
 
 HEADERS_SUPABASE = {
     "apikey": SUPABASE_KEY,
@@ -47,36 +47,16 @@ def _intentar_descarga_directa(url: str, destino: str) -> tuple[bool, str]:
     return False, str(exc)
 
 
-def descargar_excel():
-  ok_directa, err_directa = _intentar_descarga_directa(
-      ONEDRIVE_SHARE_URL, RUTA_EXCEL
-  )
-  if ok_directa:
-    return
 
-  encoded = (
-      base64.urlsafe_b64encode(ONEDRIVE_SHARE_URL.encode("utf-8"))
-      .decode("utf-8")
-      .rstrip("=")
-  )
-  share_api_url = (
-      f"https://api.onedrive.com/v1.0/shares/u!{encoded}/root/content"
-  )
-  try:
-    resp = requests.get(share_api_url, allow_redirects=True, timeout=60)
-    resp.raise_for_status()
-    with open(RUTA_EXCEL, "wb") as f:
-      f.write(resp.content)
-    if _es_xlsx_valido(RUTA_EXCEL):
-      return
-    err_api = "El endpoint /shares no devolvió un .xlsx válido."
-  except Exception as exc:
-    err_api = str(exc)
-
-  raise RuntimeError(
-      "No se pudo descargar un .xlsx válido desde OneDrive. "
-      f"Directa: {err_directa} | API shares: {err_api}"
-  )
+  def descargar_excel():
+    if not os.path.exists(RUTA_EXCEL):
+      raise FileNotFoundError(
+          f"No se encontró el archivo local en el repositorio: {RUTA_EXCEL}"
+      )
+    if not _es_xlsx_valido(RUTA_EXCEL):
+      raise RuntimeError(
+          f"El archivo {RUTA_EXCEL} no parece ser un .xlsx válido."
+      )
 
 
 def _normalizar_booleano(valor) -> bool:
