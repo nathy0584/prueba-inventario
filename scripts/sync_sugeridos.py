@@ -44,6 +44,30 @@ def _normalizar_booleano(valor) -> bool:
   return texto in ("SI", "SÍ", "TRUE", "1", "OK", "SUFICIENTE", "YES")
 
 
+def _parsear_a_solicitar(valor) -> tuple[float, bool]:
+  if valor is None:
+    return 0.0, False
+  if isinstance(valor, bool):
+    return 0.0, valor
+  if isinstance(valor, (int, float)):
+    num = float(valor)
+    return (num if num > 0 else 0.0), False
+
+  texto = str(valor).strip()
+  if not texto:
+    return 0.0, False
+
+  texto_upper = texto.upper()
+  if "STOCK SUFICIENTE" in texto_upper or texto_upper in ("OK", "SUFICIENTE"):
+    return 0.0, True
+
+  try:
+    num = float(texto.replace(",", "."))
+    return (num if num > 0 else 0.0), False
+  except ValueError:
+    return 0.0, _normalizar_booleano(texto)
+
+
 def leer_sugeridos_desde_excel(ruta_archivo: str) -> list[dict]:
   wb = openpyxl.load_workbook(ruta_archivo, data_only=True)
   registros = []
@@ -51,48 +75,81 @@ def leer_sugeridos_desde_excel(ruta_archivo: str) -> list[dict]:
   for nombre_hoja in wb.sheetnames:
     ws = wb[nombre_hoja]
     filas = list(ws.iter_rows(values_only=True))
-    if not filas:
+    if len(filas) < 4:
       continue
 
-    encabezados = [
-        str(c).strip().lower() if c is not None else "" for c in filas[0]
-    ]
+    fila_enc_idx = None
+    encabezados = []
+    col_codigo = None
+    col_solicitar = None
 
-    def idx_col(candidatos: list[str]) -> int | None:
-      for cand in candidatos:
-        if cand in encabezados:
-          return encabezados.index(cand)
+    for idx in range(min(10, len(filas))):
+      candidatos_enc = [
+          str(c).strip().lower() if c is not None else "" for c in filas[idx]
+      ]
+
+      def buscar_idx(nombres: list[str]) -> int | None:
+        for n in nombres:
+          if n in candidatos_enc:
+            return candidatos_enc.index(n)
+        return None
+
+      c_prod = buscar_idx(
+          ["producto", "insumo", "codigo", "código", "id_insumo", "id", "cod"]
+      )
+      c_sol = buscar_idx([
+          "a solicitar",
+          "a_solicitar",
+          "solicitar",
+          "cantidad_sugerida",
+          "sugerido",
+          "cantidad",
+      ])
+      if c_prod is not None and c_sol is not None:
+        fila_enc_idx = idx
+        encabezados = candidatos_enc
+        col_codigo = c_prod
+        col_solicitar = c_sol
+        break
+
+    if fila_enc_idx is None or col_codigo is None or col_solicitar is None:
+      continue
+
+    def buscar_opcional(nombres: list[str]) -> int | None:
+      for n in nombres:
+        if n in encabezados:
+          return encabezados.index(n)
       return None
 
-    col_codigo = idx_col(["codigo", "código", "id_insumo", "id", "cod"])
-    col_cant = idx_col(
-        ["cantidad_sugerida", "sugerido", "cantidad", "cant_sugerida"]
-    )
-    col_stock = idx_col(
+    col_stock = buscar_opcional(
         ["stock_suficiente", "stock suficiente", "alcanza", "estado_stock"]
     )
-    col_origen = idx_col(["origen_lista", "origen", "lista", "utm", "sucursal"])
+    col_origen = buscar_opcional(
+        ["origen_lista", "origen", "lista", "utm", "sucursal"]
+    )
 
-    if col_codigo is None or col_cant is None:
-      continue
-
-    for fila in filas[1:]:
-      codigo_raw = fila[col_codigo] if col_codigo < len(fila) else None
-      cant_raw = fila[col_cant] if col_cant < len(fila) else None
-      if codigo_raw is None or str(codigo_raw).strip() == "":
+    for fila in filas[fila_enc_idx + 1 :]:
+      prod_raw = fila[col_codigo] if col_codigo < len(fila) else None
+      if prod_raw is None or str(prod_raw).strip() == "":
         continue
 
-      try:
-        cantidad_sugerida = float(cant_raw)
-      except (TypeError, ValueError):
-        cantidad_sugerida = 0.0
-
-      if cantidad_sugerida <= 0:
+      producto_str = str(prod_raw).strip()
+      if producto_str.upper() in ("PRODUCTO", "TOTAL", "SUBTOTAL"):
         continue
+
+      sol_raw = fila[col_solicitar] if col_solicitar < len(fila) else None
+      cantidad_sugerida, stock_suf_por_texto = _parsear_a_solicitar(sol_raw)
 
       stock_raw = (
           fila[col_stock] if (col_stock is not None and col_stock < len(fila)) else None
       )
+      stock_suficiente = (
+          True if stock_suf_por_texto else _normalizar_booleano(stock_raw)
+      )
+
+      if cantidad_sugerida <= 0 and not stock_suficiente:
+        continue
+
       origen_raw = (
           fila[col_origen]
           if (col_origen is not None and col_origen < len(fila))
@@ -107,9 +164,9 @@ def leer_sugeridos_desde_excel(ruta_archivo: str) -> list[dict]:
       registros.append({
           "periodo": PERIODO,
           "origen_lista": origen_lista,
-          "codigo": str(codigo_raw).strip(),
+          "codigo": producto_str,
           "cantidad_sugerida": cantidad_sugerida,
-          "stock_suficiente": _normalizar_booleano(stock_raw),
+          "stock_suficiente": stock_suficiente,
       })
 
   return registros
