@@ -44,28 +44,28 @@ def _normalizar_booleano(valor) -> bool:
   return texto in ("SI", "SÍ", "TRUE", "1", "OK", "SUFICIENTE", "YES")
 
 
-def _parsear_a_solicitar(valor) -> tuple[float, bool]:
+def _parsear_a_solicitar(valor) -> tuple[int, bool]:
   if valor is None:
-    return 0.0, False
+    return 0, False
   if isinstance(valor, bool):
-    return 0.0, valor
+    return 0, valor
   if isinstance(valor, (int, float)):
-    num = float(valor)
-    return (num if num > 0 else 0.0), False
+    num = int(round(float(valor)))
+    return (num if num > 0 else 0), False
 
   texto = str(valor).strip()
   if not texto:
-    return 0.0, False
+    return 0, False
 
   texto_upper = texto.upper()
   if "STOCK SUFICIENTE" in texto_upper or texto_upper in ("OK", "SUFICIENTE"):
-    return 0.0, True
+    return 0, True
 
   try:
-    num = float(texto.replace(",", "."))
-    return (num if num > 0 else 0.0), False
+    num = int(round(float(texto.replace(",", "."))))
+    return (num if num > 0 else 0), False
   except ValueError:
-    return 0.0, _normalizar_booleano(texto)
+    return 0, _normalizar_booleano(texto)
 
 
 def leer_sugeridos_desde_excel(ruta_archivo: str) -> list[dict]:
