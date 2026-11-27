@@ -1,9 +1,7 @@
-import base64
 import os
 import openpyxl
 import requests
 
-ONEDRIVE_SHARE_URL = os.environ["ONEDRIVE_SHARE_URL"].strip()
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
 PERIODO = os.environ["PERIODO"].strip()
@@ -26,37 +24,15 @@ def _es_xlsx_valido(ruta_archivo: str) -> bool:
     return False
 
 
-def _intentar_descarga_directa(url: str, destino: str) -> tuple[bool, str]:
-  sep = "&" if "?" in url else "?"
-  url_descarga = url if "download=1" in url else f"{url}{sep}download=1"
-  headers = {"User-Agent": "Mozilla/5.0"}
-  try:
-    resp = requests.get(
-        url_descarga, headers=headers, allow_redirects=True, timeout=60
+def descargar_excel():
+  if not os.path.exists(RUTA_EXCEL):
+    raise FileNotFoundError(
+        f"No se encontró el archivo local en el repositorio: {RUTA_EXCEL}"
     )
-    resp.raise_for_status()
-    with open(destino, "wb") as f:
-      f.write(resp.content)
-    if _es_xlsx_valido(destino):
-      return True, ""
-    return False, (
-        "La descarga directa no devolvió un archivo .xlsx válido (posible"
-        " HTML de vista previa o login)."
+  if not _es_xlsx_valido(RUTA_EXCEL):
+    raise RuntimeError(
+        f"El archivo {RUTA_EXCEL} no parece ser un .xlsx válido."
     )
-  except Exception as exc:
-    return False, str(exc)
-
-
-
-  def descargar_excel():
-    if not os.path.exists(RUTA_EXCEL):
-      raise FileNotFoundError(
-          f"No se encontró el archivo local en el repositorio: {RUTA_EXCEL}"
-      )
-    if not _es_xlsx_valido(RUTA_EXCEL):
-      raise RuntimeError(
-          f"El archivo {RUTA_EXCEL} no parece ser un .xlsx válido."
-      )
 
 
 def _normalizar_booleano(valor) -> bool:
