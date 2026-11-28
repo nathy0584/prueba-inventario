@@ -1648,8 +1648,7 @@
     tbody.innerHTML = PEDIDOS_CARGADOS_CACHE.map((p, idx) => {
       const sinStock = p.stockDisponible < p.cantidad;
       const checkHtml = `<input type="checkbox" class="check-pedido-item" data-index="${idx}" data-sin-stock="${sinStock ? "1" : "0"}" onchange="actualizarContadorSeleccionados()">${sinStock ? ` <i class="bi bi-x-circle-fill text-danger" title="Sin stock para despachar"></i>` : ""}`;
-        ? `<i class="bi bi-x-circle-fill text-danger"></i>`
-        : `<input type="checkbox" class="check-pedido-item" data-index="${idx}" onchange="actualizarContadorSeleccionados()">`;
+      
       return `<tr>
         <td class="text-center" id="celda_check_${idx}">${checkHtml}</td>
         <td><small>${fmtFechaHora(p.fecha_hora_solicitud || p.created_at)}</small></td>
