@@ -1721,10 +1721,35 @@
       mostrarNotificacion("Error al enviar pedido: " + error.message, "error");
       return;
     }
+
+    const hoyStr = new Date().toLocaleDateString("es-CL");
+    const filasComprobante = items.map(it => {
+      const insCache = INSUMOS_MONITOR_CACHE.find(i => String(i.id) === String(it.id_insumo));
+      return {
+        categoria: insCache?.categoria || "General",
+        codigo: it.id_insumo,
+        descripcion: it.descripcion,
+        um: it.um || "UN",
+        cantidad: it.cantidad,
+        fechaVencimiento: "S/V",
+        observacion: it.observacion
+      };
+    });
+
+    const htmlSolicitud = generarHtmlComprobanteOriginal({
+      tipoDocumento: "SOLICITUD",
+      numero: folio,
+      entregadoA: suc,
+      fecha: hoyStr,
+      notas,
+      filas: filasComprobante
+    });
+    imprimirHtmlEnVentana(`SOLICITUD N° ${folio}`, htmlSolicitud);
+
     document.querySelectorAll(".cantidad-solicitar").forEach(i => i.value = "0");
     document.querySelectorAll(".observacion-solicitar").forEach(o => o.value = "");
     document.getElementById("pedidoNotas").value = "";
-    mostrarNotificacion(`¡Solicitud de Pedido N° ${folio} enviada con éxito!`);
+    mostrarNotificacion(`¡Solicitud de Pedido N° ${folio} enviada y comprobante generado!`);
   }
 
   async function cargarPedidosPreAprobacionDT() {
