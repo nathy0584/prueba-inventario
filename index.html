@@ -1647,7 +1647,7 @@
     }
     tbody.innerHTML = PEDIDOS_CARGADOS_CACHE.map((p, idx) => {
       const sinStock = p.stockDisponible < p.cantidad;
-      const checkHtml = sinStock
+      const checkHtml = `<input type="checkbox" class="check-pedido-item" data-index="${idx}" data-sin-stock="${sinStock ? "1" : "0"}" onchange="actualizarContadorSeleccionados()">${sinStock ? ` <i class="bi bi-x-circle-fill text-danger" title="Sin stock para despachar"></i>` : ""}`;
         ? `<i class="bi bi-x-circle-fill text-danger"></i>`
         : `<input type="checkbox" class="check-pedido-item" data-index="${idx}" onchange="actualizarContadorSeleccionados()">`;
       return `<tr>
@@ -1672,9 +1672,8 @@
     const cant = parseFloat(document.getElementById("admin_cant_" + idx)?.value) || 0;
     const celda = document.getElementById("celda_check_" + idx);
     if (!p || !celda) return;
-    celda.innerHTML = (cant > 0 && cant <= p.stockDisponible)
-      ? `<input type="checkbox" class="check-pedido-item" data-index="${idx}" onchange="actualizarContadorSeleccionados()">`
-      : `<i class="bi bi-x-circle-fill text-danger"></i>`;
+    const sinStock = !(cant > 0 && cant <= p.stockDisponible);
+    celda.innerHTML = `<input type="checkbox" class="check-pedido-item" data-index="${idx}" data-sin-stock="${sinStock ? "1" : "0"}" onchange="actualizarContadorSeleccionados()">${sinStock ? ` <i class="bi bi-x-circle-fill text-danger" title="Sin stock para despachar"></i>` : ""}`;
     actualizarContadorSeleccionados();
   }
 
@@ -1684,13 +1683,16 @@
   }
 
   function actualizarContadorSeleccionados() {
-  const n = document.querySelectorAll(".check-pedido-item:checked").length;
-  document.getElementById("lblContadorSeleccionados").innerText = n;
-  document.getElementById("btnDespachoGlobal").disabled = n === 0;
-  const btnDesc = document.getElementById("btnDescartarSeleccionados");
-  if (btnDesc) btnDesc.disabled = n === 0;
-}
+    const checks = Array.from(document.querySelectorAll(".check-pedido-item:checked"));
+    const n = checks.length;
+    const haySinStock = checks.some(c => c.dataset.sinStock === "1");
 
+    document.getElementById("lblContadorSeleccionados").innerText = n;
+    document.getElementById("btnDespachoGlobal").disabled = (n === 0 || haySinStock);
+
+    const btnDesc = document.getElementById("btnDescartarSeleccionados");
+    if (btnDesc) btnDesc.disabled = (n === 0);
+  }
 async function descartarPedidosSeleccionados() {
   const checks = document.querySelectorAll(".check-pedido-item:checked");
   if (!checks.length) return;
