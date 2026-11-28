@@ -640,8 +640,7 @@
   const TABLA_INVENTARIO = "Inventario_Actual";
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Coloca aquí el Base64 real de tu PNG (data:image/png;base64,...) o la URL pública de la firma
-  const FIRMA_ENTREGA_SRC = "data:image/png;base64,PEGA_AQUI_TU_BASE64_DE_FIRMA_PNG";
+  const FIRMA_ENTREGA_SRC = "https://inbjanhqikoqozsxcwnk.supabase.co/storage/v1/object/public/firmas/firmaNathy.png";
 
   const SUCURSALES_CONOCIDAS = [
     "HEMATOLOGIA", "MICROBIOLOGIA", "INMUNOQUIMICA",
@@ -1011,7 +1010,14 @@
       }
     }
 
-    const tieneFirma = incluirFirmaEntrega && FIRMA_ENTREGA_SRC && !FIRMA_ENTREGA_SRC.includes("PEGA_AQUI_TU_BASE64");
+    const srcLimpio = String(FIRMA_ENTREGA_SRC || "").trim();
+    const tieneFirma = Boolean(
+      incluirFirmaEntrega &&
+      srcLimpio &&
+      !srcLimpio.includes("PEGA_AQUI_TU_BASE64") &&
+      (srcLimpio.startsWith("data:image/") || srcLimpio.startsWith("https://") || srcLimpio.startsWith("http://"))
+    );
+
     const destinoTexto = bodega ? `${entregadoA} (Bodega: ${bodega})` : entregadoA;
     const filasHtml = filas.map(f => `
       <tr>
@@ -1109,7 +1115,7 @@
       <table class="section-firmas">
         <tr>
           <td style="width: 45%;">
-            <div class="firma-slot">${tieneFirma ? `<img src="${FIRMA_ENTREGA_SRC}" alt="Firma Quien Entrega">` : ""}</div>
+            <div class="firma-slot">${tieneFirma ? `<img src="${srcLimpio}" alt="Firma Quien Entrega">` : ""}</div>
             <div class="linea-firma"></div>
             <strong>QUIEN ENTREGA</strong><br>
             <span style="font-size: 9pt; color: #555;">Área Administración - Bioclinic Ltda.</span>
