@@ -330,10 +330,8 @@
           </button>
         </div>
       </div>
-      </div>
     </div>
   </div>
-   
 
   <!-- 3. INGRESO MASIVO CSV -->
   <div id="panel-masivo" class="tab-panel-content">
@@ -548,16 +546,48 @@
 
   <!-- 9. TRAZABILIDAD -->
   <div id="panel-trazabilidad" class="tab-panel-content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <div>
         <h5 class="label-bold m-0 text-primary"><i class="bi bi-diagram-3-fill me-2"></i>Trazabilidad de Solicitudes</h5>
         <small class="text-muted fw-bold">Fechas y horas de solicitud, Coordinador, V°B° Director Técnico y vencimiento</small>
       </div>
-      <button class="btn btn-outline-primary btn-sm fw-bold" onclick="cargarModuloTrazabilidad()">🔄 Actualizar Trazabilidad</button>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="cargarModuloTrazabilidad()">🔄 Actualizar Trazabilidad</button>
+        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="exportarTrazabilidadExcel()">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar Excel
+        </button>
+      </div>
     </div>
 
-    <div class="mb-3">
-      <input type="text" id="txtBuscarTrazabilidad" class="form-control" placeholder="🔍 Filtrar por sucursal, insumo, solicitante o folio..." oninput="filtrarTrazabilidad()">
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold mb-1" for="filtroMesTrazabilidad">Mes</label>
+        <select id="filtroMesTrazabilidad" class="form-select form-select-sm" onchange="filtrarTrazabilidad()">
+          <option value="">Todos los meses</option>
+          <option value="2026-01">Enero 2026</option>
+          <option value="2026-02">Febrero 2026</option>
+          <option value="2026-03">Marzo 2026</option>
+          <option value="2026-04">Abril 2026</option>
+          <option value="2026-05">Mayo 2026</option>
+          <option value="2026-06">Junio 2026</option>
+          <option value="2026-07">Julio 2026</option>
+          <option value="2026-08">Agosto 2026</option>
+          <option value="2026-09">Septiembre 2026</option>
+          <option value="2026-10">Octubre 2026</option>
+          <option value="2026-11">Noviembre 2026</option>
+          <option value="2026-12">Diciembre 2026</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-bold mb-1" for="filtroSucursalTrazabilidad">Sucursal</label>
+        <select id="filtroSucursalTrazabilidad" class="form-select form-select-sm" onchange="filtrarTrazabilidad()">
+          <option value="">Todas las sucursales</option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label small fw-bold mb-1" for="txtBuscarTrazabilidad">Búsqueda rápida</label>
+        <input type="text" id="txtBuscarTrazabilidad" class="form-control form-control-sm" placeholder="🔍 Filtrar por sucursal, insumo, solicitante o folio..." oninput="filtrarTrazabilidad()">
+      </div>
     </div>
 
     <div class="table-responsive">
@@ -663,6 +693,7 @@
   var PEDIDOS_CARGADOS_CACHE = [];
   var INSUMOS_MONITOR_CACHE = [];
   var TRAZABILIDAD_CACHE = [];
+  var TRAZABILIDAD_FILTRADA_CACHE = [];
   var ULTIMO_REPORTE_MENSUAL = null;
 
   const PLANILLAS_POR_SUCURSAL = {
@@ -1411,28 +1442,36 @@
       });
     }
 
-    // En procesarLoteManualCompleto() cuando tipo === "SALIDA":
-    const hoyStr = new Date().toLocaleDateString("es-CL");
-    const htmlComprobante = generarHtmlComprobanteOriginal({
-      tipoDocumento: "SALIDA",
-      numero: correlativo,
-      entregadoA: destino,
-      bodega,
-      fecha: hoyStr,
-      notas,
-      filas: LOTE_MANUAL_ITEMS.map(it => ({
-        categoria: it.categoria || "General",
-        codigo: it.idInsumo,
-        descripcion: it.name,
-        um: it.um || "UN",
-        cantidad: it.cantidad,
-        fechaVencimiento: it.fechaVenc || "S/V",
-        observacion: notas
-      }))
-    });
-    imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, htmlComprobante);
+    if (tipo === "SALIDA") {
+      const hoyStr = new Date().toLocaleDateString("es-CL");
+      const htmlComprobante = generarHtmlComprobanteOriginal({
+        tipoDocumento: "SALIDA",
+        numero: correlativo,
+        entregadoA: destino,
+        bodega,
+        fecha: hoyStr,
+        notas,
+        filas: LOTE_MANUAL_ITEMS.map(it => ({
+          categoria: it.categoria || "General",
+          codigo: it.idInsumo,
+          descripcion: it.name,
+          um: it.um || "UN",
+          cantidad: it.cantidad,
+          fechaVencimiento: it.fechaVenc || "S/V",
+          observacion: notas
+        }))
+      });
+      imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, htmlComprobante);
+    }
 
-  
+    LOTE_MANUAL_ITEMS = [];
+    renderizarTablaLoteManual();
+    document.getElementById("notas").value = "";
+    btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Lote de Movimientos en Historial';
+    mostrarNotificacion(`Lote de ${tipo} N° ${correlativo} guardado con éxito.`);
+    await recargarTablaMonitor();
+  }
+
   async function recargarTablaMonitor() {
     await cargarCatalogosIniciales();
     filtrarMonitorSaldos();
@@ -1553,7 +1592,7 @@
     new google.visualization.ColumnChart(document.getElementById("mermasChartContainer")).draw(dt, { height: 380 });
   }
 
- async function actualizarCatalogoPorSucursalUTM() {
+  async function actualizarCatalogoPorSucursalUTM() {
     const suc = (document.getElementById("pedidoSucursalOrigen").value || "").trim();
     const sucUpper = normalizarTexto(suc);
     SESION_ES_UTM = sucUpper.startsWith("UTM");
@@ -1633,6 +1672,7 @@
       </tr>`;
     }).join("");
   }
+
   async function enviarPedidoFijoAlServidor() {
     const suc = document.getElementById("pedidoSucursalOrigen").value;
     const notas = document.getElementById("pedidoNotas").value.trim();
@@ -1766,7 +1806,7 @@
     tbody.innerHTML = PEDIDOS_CARGADOS_CACHE.map((p, idx) => {
       const sinStock = p.stockDisponible < p.cantidad;
       const checkHtml = `<input type="checkbox" class="check-pedido-item" data-index="${idx}" data-sin-stock="${sinStock ? "1" : "0"}" onchange="actualizarContadorSeleccionados()">${sinStock ? ` <i class="bi bi-x-circle-fill text-danger" title="Sin stock para despachar"></i>` : ""}`;
-      
+
       return `<tr>
         <td class="text-center" id="celda_check_${idx}">${checkHtml}</td>
         <td><small>${fmtFechaHora(p.fecha_hora_solicitud || p.created_at)}</small></td>
@@ -1810,30 +1850,31 @@
     const btnDesc = document.getElementById("btnDescartarSeleccionados");
     if (btnDesc) btnDesc.disabled = (n === 0);
   }
-async function descartarPedidosSeleccionados() {
-  const checks = document.querySelectorAll(".check-pedido-item:checked");
-  if (!checks.length) return;
-  if (!confirm(`¿Descartar ${checks.length} solicitud(es) seleccionada(s) sin descontar stock?`)) return;
 
-  const ids = Array.from(checks)
-    .map(cb => PEDIDOS_CARGADOS_CACHE[Number(cb.dataset.index)]?.id)
-    .filter(Boolean);
+  async function descartarPedidosSeleccionados() {
+    const checks = document.querySelectorAll(".check-pedido-item:checked");
+    if (!checks.length) return;
+    if (!confirm(`¿Descartar ${checks.length} solicitud(es) seleccionada(s) sin descontar stock?`)) return;
 
-  if (!ids.length) return;
+    const ids = Array.from(checks)
+      .map(cb => PEDIDOS_CARGADOS_CACHE[Number(cb.dataset.index)]?.id)
+      .filter(Boolean);
 
-  const { error } = await db
-    .from("pedidos")
-    .update({ estado: "DESCARTADO" })
-    .in("id", ids);
+    if (!ids.length) return;
 
-  if (error) {
-    mostrarNotificacion("Error al descartar pedidos: " + error.message, "error");
-    return;
+    const { error } = await db
+      .from("pedidos")
+      .update({ estado: "DESCARTADO" })
+      .in("id", ids);
+
+    if (error) {
+      mostrarNotificacion("Error al descartar pedidos: " + error.message, "error");
+      return;
+    }
+
+    mostrarNotificacion(`Se descartaron ${ids.length} solicitud(es) de la bandeja.`, "info");
+    cargarPedidosPendientesAdmin();
   }
-
-  mostrarNotificacion(`Se descartaron ${ids.length} solicitud(es) de la bandeja.`, "info");
-  cargarPedidosPendientesAdmin();
-}
 
   async function procesarDespachoMasivoGlobal() {
     const checks = document.querySelectorAll(".check-pedido-item:checked");
@@ -1842,10 +1883,15 @@ async function descartarPedidosSeleccionados() {
     const { data: ult } = await db.from("historial").select("correlativo").eq("tipo", "SALIDA").order("correlativo", { ascending: false }).limit(1);
     const correlativo = (ult && ult.length ? Number(ult[0].correlativo) || 0 : 0) + 1;
 
-    const filasPdf = [];
+    const filasComprobante = [];
+    let primerPedido = null;
+
     for (const cb of checks) {
       const idx = Number(cb.dataset.index);
       const p = PEDIDOS_CARGADOS_CACHE[idx];
+      if (!p) continue;
+      if (!primerPedido) primerPedido = p;
+
       const cantFinal = parseFloat(document.getElementById("admin_cant_" + idx).value) || 0;
       const venc = document.getElementById("admin_venc_" + idx).value || "S/V";
       const obs = (document.getElementById("admin_obs_" + idx).value || "").trim();
@@ -1869,17 +1915,56 @@ async function descartarPedidosSeleccionados() {
       await db.from(TABLA_INVENTARIO).update({ stock: nuevoStock }).eq("id", idFiltro);
       await db.from("pedidos").update({ estado: "DESPACHADO", fecha_vencimiento: venc }).eq("id", p.id);
 
-      filasPdf.push(`<tr><td>${p.id_insumo}</td><td>${p.descripcion}</td><td>${p.um}</td><td>${cantFinal}</td><td>${venc}</td><td>${obs}</td></tr>`);
+      const insCache = INSUMOS_MONITOR_CACHE.find(i => String(i.id) === String(p.id_insumo));
+      filasComprobante.push({
+        categoria: insCache?.categoria || "General",
+        codigo: p.id_insumo,
+        descripcion: p.descripcion,
+        um: p.um || "UN",
+        cantidad: cantFinal,
+        fechaVencimiento: venc,
+        observacion: obs
+      });
     }
 
-    imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, `
-      <h3>COMPROBANTE DE SALIDA N° ${correlativo}</h3>
-      <table><thead><tr><th>Código</th><th>Descripción</th><th>U.M.</th><th>Cantidad</th><th>Venc.</th><th>Obs.</th></tr></thead><tbody>${filasPdf.join("")}</tbody></table>
-    `);
+    const hoyStr = new Date().toLocaleDateString("es-CL");
+    const htmlComprobante = generarHtmlComprobanteOriginal({
+      tipoDocumento: "SALIDA",
+      numero: correlativo,
+      solicitudNumero: primerPedido?.folio || "",
+      entregadoA: primerPedido?.sucursal || "",
+      fecha: hoyStr,
+      filas: filasComprobante
+    });
+
+    imprimirHtmlEnVentana(`SALIDA N° ${correlativo}`, htmlComprobante);
 
     mostrarNotificacion(`Se despacharon ${checks.length} ítems bajo Salida N° ${correlativo}.`);
     cargarPedidosPendientesAdmin();
     recargarTablaMonitor();
+  }
+
+  function poblarSelectorSucursalesTrazabilidad(filas) {
+    const sel = document.getElementById("filtroSucursalTrazabilidad");
+    if (!sel) return;
+    const valorActual = sel.value;
+    const desdeDatos = (filas || []).map(f => (f.sucursal || "").trim()).filter(Boolean);
+    const unicas = Array.from(new Set([...SUCURSALES_CONOCIDAS, ...desdeDatos])).sort((a, b) => a.localeCompare(b, "es"));
+
+    sel.innerHTML = '<option value="">Todas las sucursales</option>' +
+      unicas.map(s => `<option value="${s}">${s}</option>`).join("");
+
+    if (valorActual && unicas.includes(valorActual)) {
+      sel.value = valorActual;
+    }
+  }
+
+  function obtenerClaveMes(p) {
+    const raw = p.fecha_hora_solicitud || p.created_at;
+    if (!raw) return "";
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
   async function cargarModuloTrazabilidad() {
@@ -1891,7 +1976,7 @@ async function descartarPedidosSeleccionados() {
       .from("pedidos")
       .select("*")
       .order("id", { ascending: false })
-      .limit(300);
+      .limit(500);
 
     if (error) {
       tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3">Error al cargar trazabilidad: ${error.message}</td></tr>`;
@@ -1917,24 +2002,36 @@ async function descartarPedidosSeleccionados() {
       vctoFinal: p.fecha_vencimiento || vctoPorSol[`${p.folio}_${String(p.id_insumo)}`] || "S/V"
     }));
 
+    poblarSelectorSucursalesTrazabilidad(TRAZABILIDAD_CACHE);
     filtrarTrazabilidad();
   }
 
   function filtrarTrazabilidad() {
+    const mesSel = document.getElementById("filtroMesTrazabilidad")?.value || "";
+    const sucSel = (document.getElementById("filtroSucursalTrazabilidad")?.value || "").trim().toUpperCase();
     const q = (document.getElementById("txtBuscarTrazabilidad")?.value || "").toLowerCase().trim();
-    const lista = q
-      ? TRAZABILIDAD_CACHE.filter(r =>
+
+    const lista = (TRAZABILIDAD_CACHE || []).filter(r => {
+      if (mesSel && obtenerClaveMes(r) !== mesSel) return false;
+      if (sucSel && normalizarTexto(r.sucursal) !== normalizarTexto(sucSel)) return false;
+      if (q) {
+        const coincide =
           String(r.sucursal || "").toLowerCase().includes(q) ||
           String(r.descripcion || "").toLowerCase().includes(q) ||
           String(r.id_insumo || "").toLowerCase().includes(q) ||
           String(r.folio || "").toLowerCase().includes(q) ||
-          String(r.solicitante || "").toLowerCase().includes(q))
-      : TRAZABILIDAD_CACHE;
+          String(r.solicitante || "").toLowerCase().includes(q);
+        if (!coincide) return false;
+      }
+      return true;
+    });
+
+    TRAZABILIDAD_FILTRADA_CACHE = lista;
 
     const tbody = document.getElementById("tbodyTrazabilidad");
     if (!tbody) return;
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay registros de trazabilidad.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay registros de trazabilidad para el filtro seleccionado.</td></tr>';
       return;
     }
 
@@ -1950,6 +2047,65 @@ async function descartarPedidosSeleccionados() {
         <td class="text-center"><span class="badge bg-light text-dark border">${r.vctoFinal}</span></td>
       </tr>
     `).join("");
+  }
+
+  function exportarTrazabilidadExcel() {
+    const filas = TRAZABILIDAD_FILTRADA_CACHE.length ? TRAZABILIDAD_FILTRADA_CACHE : TRAZABILIDAD_CACHE;
+    if (!filas || !filas.length) {
+      mostrarNotificacion("No hay registros de trazabilidad para exportar.", "info");
+      return;
+    }
+
+    const mesSel = document.getElementById("filtroMesTrazabilidad")?.value || "todos";
+    const sucSel = (document.getElementById("filtroSucursalTrazabilidad")?.value || "todas").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const encabezados = [
+      "F. y Hora Solicitud",
+      "F. y Hora Aprob. Coordinador",
+      "F. y Hora V°B° Dir. Técnico",
+      "Sucursal",
+      "Código Insumo",
+      "Insumo",
+      "Cantidad",
+      "U.M.",
+      "Fecha Vcto",
+      "Solicitante",
+      "Folio",
+      "Estado"
+    ];
+
+    const escaparCsv = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+    const lineas = [
+      encabezados.map(escaparCsv).join(";"),
+      ...filas.map(r => [
+        fmtFechaHora(r.fecha_hora_solicitud || r.created_at),
+        fmtFechaHora(r.fecha_hora_coordinador),
+        fmtFechaHora(r.fecha_hora_dt),
+        r.sucursal || "",
+        r.id_insumo || "",
+        r.descripcion || "",
+        r.cantidad ?? 0,
+        r.um || "UN",
+        r.vctoFinal || "S/V",
+        r.solicitante || "",
+        r.folio || "",
+        r.estado || ""
+      ].map(escaparCsv).join(";"))
+    ];
+
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + lineas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Trazabilidad_${sucSel}_${mesSel}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    mostrarNotificacion(`Se exportaron ${filas.length} filas a Excel (.csv).`);
   }
 
   async function consultarReporteMensualBackend() {
@@ -2086,6 +2242,7 @@ async function descartarPedidosSeleccionados() {
     LOTE_MANUAL_ITEMS = [];
     PEDIDOS_CARGADOS_CACHE = [];
     TRAZABILIDAD_CACHE = [];
+    TRAZABILIDAD_FILTRADA_CACHE = [];
     ULTIMO_REPORTE_MENSUAL = null;
 
     document.querySelectorAll(".tab-panel-content").forEach(p => {
