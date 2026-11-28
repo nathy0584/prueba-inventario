@@ -1964,9 +1964,23 @@ async function descartarPedidosSeleccionados() {
     USUARIO_LOGUEADO = "";
     ROL_LOGUEADO = "";
     CONFIG_USUARIO_ACTUAL = null;
+    SESION_ES_UTM = false;
     LOTE_MANUAL_ITEMS = [];
     PEDIDOS_CARGADOS_CACHE = [];
     TRAZABILIDAD_CACHE = [];
+    ULTIMO_REPORTE_MENSUAL = null;
+
+    document.querySelectorAll(".tab-panel-content").forEach(p => {
+      p.classList.remove("active");
+      p.style.display = "none";
+    });
+    document.querySelectorAll(".nav-tabs-custom .nav-link").forEach(b => b.classList.remove("active"));
+
+    ["tbodyLoteManual", "tbodyPreAprobacionDT", "tbodyAdminPedidos", "tbodyMonitor", "tbodyMermas", "tbodySubbodegas", "tbodyReporteMensual", "tbodyCarroPedido", "tbodyTrazabilidad"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = "";
+    });
+
     document.getElementById("seccionApp").classList.add("d-none");
     document.getElementById("seccionLogin").classList.remove("d-none");
     document.getElementById("loginUsuario").value = "";
