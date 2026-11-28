@@ -512,15 +512,21 @@
     </div>
 
     <div class="mb-4">
-      <h6 class="label-bold"><i class="bi bi-list-check text-success me-1"></i> Listado de Materiales Disponibles para Solicitud</h6>
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h6 class="label-bold m-0"><i class="bi bi-list-check text-success me-1"></i> <span id="tituloCatalogoSolicitud">Listado de Materiales Disponibles para Solicitud</span></h6>
+        <div class="d-flex align-items-center gap-2">
+          <input type="text" id="txtBuscarSolicitud" class="form-control form-control-sm" style="width:220px;" placeholder="🔍 Filtrar insumo..." oninput="actualizarCatalogoPorSucursalUTM()">
+          <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btnToggleTodosCatalogo" onclick="alternarVerTodoCatalogo()">Ver todos los insumos</button>
+        </div>
+      </div>
       <div class="table-responsive">
         <table class="table table-bordered table-striped table-carro align-middle">
-          <thead class="table-primary small text-uppercase">
+          <thead class="table-primary small text-uppercase" id="theadCarroPedido">
             <tr>
               <th style="width: 12%;">Código</th>
               <th>Descripción del Material</th>
               <th style="width: 8%; text-align:center;">U.M.</th>
-              <th style="width: 12%; text-align:center;">Stock</th>
+              <th style="width: 10%; text-align:center;">Stock</th>
               <th style="width: 15%; text-align:center;">Cantidad a Solicitar</th>
               <th style="width: 15%;">Observaciones</th>
             </tr>
@@ -573,13 +579,20 @@
     "BIOEXPRESS", "ADMINISTRACION", "ESACHS", "MAHO", "CORMUDESI", "KUNAMASTA"
   ];
 
+  // Categorías típicas de toma de muestra / UTM cuando no hay tabla de asignación en BD
+  const CATEGORIAS_UTM_DEFECTO = [
+    "INSUMO PREANALITICO", "PREANALITICO", "TOMA DE MUESTRA", "EXAMENES", "LABORATORIO", "CLINICO"
+  ];
+
   var USUARIO_LOGUEADO = "";
   var ROL_LOGUEADO = "";
   var ES_COORDINADOR = false;
   var ES_DT = false;
   var ES_ADMIN_BODEGA = false;
+  var ES_SOLO_SUCURSAL = false;
   var SUCURSALES_USUARIO_LOGUEADO = [];
   var SESION_ES_UTM = false;
+  var VER_TODO_CATALOGO = false;
   var LOTE_MANUAL_ITEMS = [];
   var PEDIDOS_CARGADOS_CACHE = [];
   var INSUMOS_MONITOR_CACHE = [];
@@ -698,20 +711,26 @@
       mostrarNotificacion("Error al cargar inventario: " + errIns.message, "error");
     }
 
-    INSUMOS_MONITOR_CACHE = (insumos || []).map(r => ({
-      id: String(r.id),
-      nombre: r.nombre,
-      categoria: r.categoria || "General",
-      um: r.um || "UN",
-      stock: Number(r.stock) || 0,
-      totalValor: Number(r.total_valor) || 0,
-      estado: r.estado || "SIN STOCK",
-      precioUnitario: Number(r.precio_unitario) || 0,
-      proyeccionAnual: Number(r.proyeccion_anual) || 0,
-      proyeccionTrimestral: Number(r.proyeccion_trimestral) || 0,
-      stockBulnes: Number(r.stock_bulnes) || 0,
-      stockPeninsula: Number(r.stock_peninsula) || 0
-    }));
+    INSUMOS_MONITOR_CACHE = (insumos || []).map(r => {
+      const sugeridoRaw = r.sugerido_utm ?? r.sugerido ?? r.cantidad_sugerida ?? null;
+      const sucursalesRaw = r.sucursales ?? r.sucursal ?? r.habilitado_utm ?? null;
+      return {
+        id: String(r.id),
+        nombre: r.nombre,
+        categoria: r.categoria || "General",
+        um: r.um || "UN",
+        stock: Number(r.stock) || 0,
+        totalValor: Number(r.total_valor) || 0,
+        estado: r.estado || "SIN STOCK",
+        precioUnitario: Number(r.precio_unitario) || 0,
+        proyeccionAnual: Number(r.proyeccion_anual) || 0,
+        proyeccionTrimestral: Number(r.proyeccion_trimestral) || 0,
+        stockBulnes: Number(r.stock_bulnes) || 0,
+        stockPeninsula: Number(r.stock_peninsula) || 0,
+        sugeridoRaw: sugeridoRaw !== null && sugeridoRaw !== "" ? Number(sugeridoRaw) || 0 : null,
+        sucursalesRaw: sucursalesRaw ? String(sucursalesRaw) : ""
+      };
+    });
 
     const datalist = document.getElementById("listaInsumosDinamica");
     if (datalist) {
@@ -773,10 +792,11 @@
     const esFinanzas = userUpper.includes("FINANZAS") || rolUpper.includes("FINANZAS");
     ES_DT = userUpper.includes("DIRECTOR") || userUpper.includes("TECNICO") || userUpper === "DT" || rolUpper.includes("DT");
     ES_COORDINADOR = userUpper.includes("COORDINADOR") || rolUpper.includes("COORDINADOR");
+    ES_SOLO_SUCURSAL = !ES_ADMIN_BODEGA && !esFinanzas && !ES_DT && !ES_COORDINADOR;
 
     const listaSucursales = data.sucursales
       ? data.sucursales.split(",").map(s => s.trim()).filter(Boolean)
-      : (ES_ADMIN_BODEGA || esFinanzas ? SUCURSALES_CONOCIDAS : [USUARIO_LOGUEADO]);
+      : (ES_ADMIN_BODEGA || esFinanzas ? SUCURSALES_CONOCIDAS : [USUARIO_LOGUEADO.toUpperCase()]);
 
     SUCURSALES_USUARIO_LOGUEADO = listaSucursales;
 
@@ -804,7 +824,18 @@
     const tabSub = document.getElementById("tab-subbodegas");
     const tabReporte = document.getElementById("tab-reporte-mensual");
 
-    if (ES_COORDINADOR && !ES_ADMIN_BODEGA && !ES_DT) {
+    if (ES_SOLO_SUCURSAL) {
+      // Usuario de sucursal (ej. UtmBioprat): solo Solicitud de Pedido y Reporte Mensual
+      if (tabManual) tabManual.classList.add("d-none");
+      if (tabAprob) tabAprob.classList.add("d-none");
+      if (tabMasivo) tabMasivo.classList.add("d-none");
+      if (tabMonitor) tabMonitor.classList.add("d-none");
+      if (tabMermas) tabMermas.classList.add("d-none");
+      if (tabSub) tabSub.classList.add("d-none");
+      if (tabSolicitud) tabSolicitud.classList.remove("d-none");
+      if (tabReporte) tabReporte.classList.remove("d-none");
+    } else if (ES_COORDINADOR && !ES_ADMIN_BODEGA && !ES_DT) {
+      // Coordinador: solo Aprobaciones Pendientes, Solicitud de Pedido y Reporte Mensual
       if (tabManual) tabManual.classList.add("d-none");
       if (tabMasivo) tabMasivo.classList.add("d-none");
       if (tabMonitor) tabMonitor.classList.add("d-none");
@@ -851,6 +882,7 @@
       if (subtituloCoord) subtituloCoord.classList.add("d-none");
     }
 
+    VER_TODO_CATALOGO = false;
     filtrarMonitorSaldos();
     await actualizarCatalogoPorSucursalUTM();
 
@@ -1201,28 +1233,148 @@
     new google.visualization.ColumnChart(document.getElementById("mermasChartContainer")).draw(dt, { height: 380 });
   }
 
+  function calcularSugeridoUTM(ins) {
+    if (ins.sugeridoRaw !== null) return ins.sugeridoRaw;
+    if (ins.proyeccionTrimestral > 0) {
+      const dif = Math.ceil(ins.proyeccionTrimestral - ins.stock);
+      return dif > 0 ? dif : 0;
+    }
+    return ins.stock <= 2 ? 1 : 0;
+  }
+
+  function insumoCorrespondeASucursal(ins, suc) {
+    const sucUpper = (suc || "").toUpperCase().trim();
+    if (!sucUpper) return true;
+
+    if (ins.sucursalesRaw) {
+      const lista = ins.sucursalesRaw.split(",").map(x => x.trim().toUpperCase()).filter(Boolean);
+      if (lista.includes("TODOS") || lista.includes("TODAS")) return true;
+      return lista.some(x => sucUpper.includes(x) || x.includes(sucUpper));
+    }
+
+    if (sucUpper.startsWith("UTM")) {
+      const catUpper = (ins.categoria || "").toUpperCase();
+      const nomUpper = (ins.nombre || "").toUpperCase();
+      return CATEGORIAS_UTM_DEFECTO.some(c => catUpper.includes(c))
+        || nomUpper.includes("AGUA")
+        || nomUpper.includes("ALCOHOL")
+        || nomUpper.includes("AGUJA")
+        || nomUpper.includes("VACUETTE")
+        || nomUpper.includes("JERINGA")
+        || nomUpper.includes("GUANTE")
+        || nomUpper.includes("TORULA")
+        || nomUpper.includes("GASA")
+        || nomUpper.includes("APOSITO")
+        || nomUpper.includes("BATA")
+        || nomUpper.includes("MASCARILLA")
+        || nomUpper.includes("BAJADA")
+        || nomUpper.includes("CINTA")
+        || nomUpper.includes("CONTENEDOR");
+    }
+
+    return true;
+  }
+
+  function alternarVerTodoCatalogo() {
+    VER_TODO_CATALOGO = !VER_TODO_CATALOGO;
+    const btn = document.getElementById("btnToggleTodosCatalogo");
+    if (btn) {
+      btn.textContent = VER_TODO_CATALOGO ? "Mostrar solo insumos de sucursal" : "Ver todos los insumos";
+    }
+    actualizarCatalogoPorSucursalUTM();
+  }
+
   async function actualizarCatalogoPorSucursalUTM() {
     const suc = document.getElementById("pedidoSucursalOrigen").value || "";
     SESION_ES_UTM = suc.toUpperCase().startsWith("UTM");
+    const filtroTexto = (document.getElementById("txtBuscarSolicitud")?.value || "").toLowerCase().trim();
     const tbody = document.getElementById("tbodyCarroPedido");
+    const thead = document.getElementById("theadCarroPedido");
+    const btnVerTodo = document.getElementById("btnToggleTodosCatalogo");
+    const tituloCat = document.getElementById("tituloCatalogoSolicitud");
+
     if (!tbody) return;
+
+    if (btnVerTodo) {
+      btnVerTodo.classList.toggle("d-none", !SESION_ES_UTM);
+    }
+
+    if (tituloCat) {
+      tituloCat.textContent = SESION_ES_UTM && !VER_TODO_CATALOGO
+        ? `Materiales Habilitados para ${suc} (con Sugerido UTM)`
+        : "Listado de Materiales Disponibles para Solicitud";
+    }
+
+    if (thead) {
+      thead.innerHTML = SESION_ES_UTM
+        ? `<tr>
+            <th style="width: 12%;">Código</th>
+            <th>Descripción del Material</th>
+            <th style="width: 8%; text-align:center;">U.M.</th>
+            <th style="width: 9%; text-align:center;">Stock</th>
+            <th style="width: 10%; text-align:center;">Sugerido</th>
+            <th style="width: 14%; text-align:center;">Cantidad a Solicitar</th>
+            <th style="width: 15%;">Observaciones</th>
+          </tr>`
+        : `<tr>
+            <th style="width: 12%;">Código</th>
+            <th>Descripción del Material</th>
+            <th style="width: 8%; text-align:center;">U.M.</th>
+            <th style="width: 12%; text-align:center;">Stock</th>
+            <th style="width: 15%; text-align:center;">Cantidad a Solicitar</th>
+            <th style="width: 15%;">Observaciones</th>
+          </tr>`;
+    }
+
+    const colspanNum = SESION_ES_UTM ? 7 : 6;
+
     if (!INSUMOS_MONITOR_CACHE.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No hay insumos cargados en el inventario.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-3">No hay insumos cargados en el inventario.</td></tr>`;
       return;
     }
-    tbody.innerHTML = INSUMOS_MONITOR_CACHE.map(ins => `
-      <tr>
-        <td><span class="badge bg-secondary">${ins.id}</span></td>
-        <td><strong>${ins.nombre}</strong></td>
-        <td class="text-center">${ins.um}</td>
-        <td class="text-center fw-bold">${ins.stock}</td>
-        <td>
-          <input type="number" min="0" value="0" class="form-control form-control-sm cantidad-solicitar text-center mx-auto"
-                 style="max-width:110px;" data-id="${ins.id}" data-nombre="${ins.nombre}" data-um="${ins.um}">
-        </td>
-        <td><input type="text" class="form-control form-control-sm observacion-solicitar" id="obs_${ins.id}" placeholder="Observaciones..."></td>
-      </tr>
-    `).join("");
+
+    let lista = VER_TODO_CATALOGO
+      ? INSUMOS_MONITOR_CACHE
+      : INSUMOS_MONITOR_CACHE.filter(ins => insumoCorrespondeASucursal(ins, suc));
+
+    if (!lista.length && SESION_ES_UTM && !VER_TODO_CATALOGO) {
+      lista = INSUMOS_MONITOR_CACHE;
+    }
+
+    if (filtroTexto) {
+      lista = lista.filter(ins =>
+        ins.id.toLowerCase().includes(filtroTexto) ||
+        ins.nombre.toLowerCase().includes(filtroTexto) ||
+        ins.categoria.toLowerCase().includes(filtroTexto)
+      );
+    }
+
+    if (!lista.length) {
+      tbody.innerHTML = `<tr><td colspan="${colspanNum}" class="text-center text-muted py-3">No hay insumos que coincidan con el filtro.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = lista.map(ins => {
+      const sug = SESION_ES_UTM ? calcularSugeridoUTM(ins) : 0;
+      const celdaSugerido = SESION_ES_UTM
+        ? `<td class="text-center"><span class="badge ${sug > 0 ? "bg-info text-dark" : "bg-light text-muted border"} fs-6">${sug}</span></td>`
+        : "";
+
+      return `
+        <tr>
+          <td><span class="badge bg-secondary">${ins.id}</span></td>
+          <td><strong>${ins.nombre}</strong></td>
+          <td class="text-center">${ins.um}</td>
+          <td class="text-center fw-bold">${ins.stock}</td>
+          ${celdaSugerido}
+          <td>
+            <input type="number" min="0" value="${sug > 0 ? sug : 0}" class="form-control form-control-sm cantidad-solicitar text-center mx-auto"
+                   style="max-width:110px;" data-id="${ins.id}" data-nombre="${ins.nombre}" data-um="${ins.um}">
+          </td>
+          <td><input type="text" class="form-control form-control-sm observacion-solicitar" id="obs_${ins.id}" placeholder="Observaciones..."></td>
+        </tr>
+      `;
+    }).join("");
   }
 
   async function enviarPedidoFijoAlServidor() {
@@ -1698,6 +1850,8 @@
     ES_COORDINADOR = false;
     ES_DT = false;
     ES_ADMIN_BODEGA = false;
+    ES_SOLO_SUCURSAL = false;
+    VER_TODO_CATALOGO = false;
     SUCURSALES_USUARIO_LOGUEADO = [];
     LOTE_MANUAL_ITEMS = [];
     PEDIDOS_CARGADOS_CACHE = [];
