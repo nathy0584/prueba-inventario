@@ -321,12 +321,19 @@
           <span class="fw-bold text-secondary">Ítems seleccionados: </span>
           <span id="lblContadorSeleccionados" class="badge bg-primary fs-6">0</span>
         </div>
-        <button type="button" id="btnDespachoGlobal" onclick="procesarDespachoMasivoGlobal()" class="btn btn-primary p-2 px-4 fw-bold fs-6" disabled>
-          <i class="bi bi-truck me-2"></i> Despachar Todo lo Seleccionado
-        </button>
+        <div class="d-flex gap-2">
+          <button type="button" id="btnDescartarSeleccionados" onclick="descartarPedidosSeleccionados()" class="btn btn-outline-danger p-2 px-3 fw-bold fs-6" disabled>
+            <i class="bi bi-trash3 me-1"></i> Descartar Seleccionados
+          </button>
+          <button type="button" id="btnDespachoGlobal" onclick="procesarDespachoMasivoGlobal()" class="btn btn-primary p-2 px-4 fw-bold fs-6" disabled>
+            <i class="bi bi-truck me-2"></i> Despachar Todo lo Seleccionado
+          </button>
+        </div>
+      </div>
       </div>
     </div>
   </div>
+   
 
   <!-- 3. INGRESO MASIVO CSV -->
   <div id="panel-masivo" class="tab-panel-content">
@@ -1677,10 +1684,37 @@
   }
 
   function actualizarContadorSeleccionados() {
-    const n = document.querySelectorAll(".check-pedido-item:checked").length;
-    document.getElementById("lblContadorSeleccionados").innerText = n;
-    document.getElementById("btnDespachoGlobal").disabled = n === 0;
+  const n = document.querySelectorAll(".check-pedido-item:checked").length;
+  document.getElementById("lblContadorSeleccionados").innerText = n;
+  document.getElementById("btnDespachoGlobal").disabled = n === 0;
+  const btnDesc = document.getElementById("btnDescartarSeleccionados");
+  if (btnDesc) btnDesc.disabled = n === 0;
+}
+
+async function descartarPedidosSeleccionados() {
+  const checks = document.querySelectorAll(".check-pedido-item:checked");
+  if (!checks.length) return;
+  if (!confirm(`¿Descartar ${checks.length} solicitud(es) seleccionada(s) sin descontar stock?`)) return;
+
+  const ids = Array.from(checks)
+    .map(cb => PEDIDOS_CARGADOS_CACHE[Number(cb.dataset.index)]?.id)
+    .filter(Boolean);
+
+  if (!ids.length) return;
+
+  const { error } = await db
+    .from("pedidos")
+    .update({ estado: "DESCARTADO" })
+    .in("id", ids);
+
+  if (error) {
+    mostrarNotificacion("Error al descartar pedidos: " + error.message, "error");
+    return;
   }
+
+  mostrarNotificacion(`Se descartaron ${ids.length} solicitud(es) de la bandeja.`, "info");
+  cargarPedidosPendientesAdmin();
+}
 
   async function procesarDespachoMasivoGlobal() {
     const checks = document.querySelectorAll(".check-pedido-item:checked");
